@@ -1,165 +1,144 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard REINFO - Perú</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Librería de Gráficos -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body { margin: 0; padding: 0; font-family: sans-serif; display: flex; height: 100vh; }
-        #map { width: 75%; height: 100%; }
-        #panel { width: 25%; background: #2c3e50; color: white; padding: 20px; box-sizing: border-box; overflow-y: auto; }
-        .filter-group { margin-bottom: 20px; }
-        select { width: 100%; padding: 8px; border-radius: 4px; border: none; margin-top: 5px; }
-        canvas { background: white; border-radius: 8px; margin-top: 20px; padding: 10px; }
-        h2 { font-size: 1.2rem; border-bottom: 1px solid #7f8c8d; padding-bottom: 10px; }
-    </style>
-</head>
-<body>
+<script>
+    // 1. Configuración del Mapa con Google Hybrid
+    const map = L.map('map').setView([-9.189967, -75.015152], 6);
 
-    <div id="map"></div>
+    const googleHybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+        maxZoom: 20,
+        subdomains:['mt0','mt1','mt2','mt3'],
+        attribution: 'Google Maps'
+    }).addTo(map);
 
-    <div id="panel">
-        <h2>Filtros REINFO</h2>
+    let puntosOriginales = [];
+    let markersLayer = L.layerGroup().addTo(map);
+    let myChart;
+
+    // 2. Carga de datos desde Render
+    async function cargarDatos() {
+        try {
+            const response = await fetch('https://reinfo-api-1.onrender.com/puntos-reinfo');
+            puntosOriginales = await response.json();
+            
+            console.log("Datos cargados:", puntosOriginales[0]); // Para verificar en consola
+
+            rellenarFiltroDepartamentos(puntosOriginales);
+            actualizarMapa(puntosOriginales);
+            actualizarGrafico(puntosOriginales);
+        } catch (error) {
+            console.error("Error al cargar datos:", error);
+        }
+    }
+
+    // 3. Llenar Select de Departamentos
+    function rellenarFiltroDepartamentos(data) {
+        const selectDep = document.getElementById('select-departamento');
+        const deps = [...new Set(data.map(p => p.DEPARTAMEN))].sort();
         
-        <div class="filter-group">
-            <label>Departamento:</label>
-            <select id="select-departamento">
-                <option value="todos">Todos los Departamentos</option>
-            </select>
-        </div>
-
-        <div class="filter-group">
-            <label>Distrito:</label>
-            <select id="select-distrito">
-                <option value="todos">Todos los Distritos</option>
-            </select>
-        </div>
-
-        <hr>
-        <h2>Resumen Estadístico</h2>
-        <canvas id="chartPie"></canvas>
-    </div>
-
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        const map = L.map('map').setView([-9.189967, -75.015152], 6);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-        let puntosOriginales = [];
-        let markersLayer = L.layerGroup().addTo(map);
-        let myChart;
-
-        // 1. Cargar datos desde tu API en Render
-        async function cargarDatos() {
-            try {
-                const response = await fetch('https://reinfo-api-1.onrender.com/puntos-reinfo');
-                puntosOriginales = await response.json();
-                
-                rellenarFiltros(puntosOriginales);
-                actualizarMapa(puntosOriginales);
-                actualizarGrafico(puntosOriginales);
-            } catch (error) {
-                console.error("Error cargando datos:", error);
+        deps.forEach(dep => {
+            if (dep) {
+                const opt = document.createElement('option');
+                opt.value = dep;
+                opt.textContent = dep;
+                selectDep.appendChild(opt);
             }
-        }
+        });
+    }
 
-        // 2. Llenar los SELECT dinámicamente
-        function rellenarFiltros(data) {
-            const selectDep = document.getElementById('select-departamento');
-            const departamentos = [...new Set(data.map(p => p.DEPARTAMEN))].sort();
-            
-            departamentos.forEach(dep => {
-                const option = document.createElement('option');
-                option.value = dep;
-                option.textContent = dep;
-                selectDep.appendChild(option);
-            });
-        }
-
-        // 3. Filtrar datos al cambiar el SELECT
-        function aplicarFiltros() {
-            const depSeleccionado = document.getElementById('select-departamento').value;
-            const distSeleccionado = document.getElementById('select-distrito').value;
-
-            let filtrados = puntosOriginales;
-
-            if (depSeleccionado !== "todos") {
-                filtrados = filtrados.filter(p => p.DEPARTAMEN === depSeleccionado);
-            }
-            
-            if (distSeleccionado !== "todos") {
-                filtrados = filtrados.filter(p => p.DISTRITO === distSeleccionado);
-            }
-
-            actualizarMapa(filtrados);
-            actualizarGrafico(filtrados);
-        }
-
-        // 4. Actualizar Marcadores en el Mapa
-        function actualizarMapa(data) {
-            markersLayer.clearLayers();
-            data.forEach(p => {
+    // 4. Actualizar Marcadores
+    function actualizarMapa(data) {
+        markersLayer.clearLayers();
+        data.forEach(p => {
+            // Usamos lat y lon que genera GeoPandas por defecto, y tus columnas de texto
+            if (p.lat && p.lon) {
                 const marker = L.circleMarker([p.lat, p.lon], {
                     radius: 5,
-                    fillColor: "#00d2ff",
+                    fillColor: "#00f2ff",
                     color: "#fff",
                     weight: 1,
                     fillOpacity: 0.8
                 });
-                marker.bindPopup(`<b>Dep:</b> ${p.DEPARTAMEN}<br><b>Dist:</b> ${p.DISTRITO}`);
+                marker.bindPopup(`
+                    <b>Departamento:</b> ${p.DEPARTAMEN}<br>
+                    <b>Distrito:</b> ${p.DISTRITO}
+                `);
                 markersLayer.addLayer(marker);
-            });
-            if (data.length > 0) {
-                const group = new L.featureGroup(markersLayer.getLayers());
-                map.fitBounds(group.getBounds());
             }
-        }
-
-        // 5. Actualizar Gráfico de Pie (Distribución por Departamento)
-        function actualizarGrafico(data) {
-            const conteo = {};
-            data.forEach(p => {
-                conteo[p.DEPARTAMEN] = (conteo[p.DEPARTAMEN] || 0) + 1;
-            });
-
-            const ctx = document.getElementById('chartPie').getContext('2d');
-            if (myChart) myChart.destroy(); // Borrar el anterior para que no se superpongan
-
-            myChart = new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: Object.keys(conteo),
-                    datasets: [{
-                        data: Object.values(conteo),
-                        backgroundColor: ['#e74c3c', '#3498db', '#f1c40f', '#2ecc71', '#9b59b6', '#e67e22']
-                    }]
-                },
-                options: { plugins: { legend: { display: false } } }
-            });
-        }
-
-        // Eventos
-        document.getElementById('select-departamento').addEventListener('change', (e) => {
-            const dep = e.target.value;
-            const selectDist = document.getElementById('select-distrito');
-            selectDist.innerHTML = '<option value="todos">Todos los Distritos</option>';
-            
-            if (dep !== "todos") {
-                const distritos = [...new Set(puntosOriginales.filter(p => p.DEPARTAMEN === dep).map(p => p.DISTRITO))].sort();
-                distritos.forEach(dist => {
-                    const option = document.createElement('option');
-                    option.value = dist;
-                    option.textContent = dist;
-                    selectDist.appendChild(option);
-                });
-            }
-            aplicarFiltros();
         });
 
-        document.getElementById('select-distrito').addEventListener('change', aplicarFiltros);
+        // Ajustar vista si hay pocos puntos (opcional)
+        if (data.length > 0 && data.length < 500) {
+            const group = new L.featureGroup(markersLayer.getLayers());
+            map.fitBounds(group.getBounds());
+        }
+    }
+
+    // 5. Gráfico Estadístico
+    function actualizarGrafico(data) {
+        const conteo = {};
+        data.forEach(p => {
+            const key = p.DEPARTAMEN || "Otros";
+            conteo[key] = (conteo[key] || 0) + 1;
+        });
+
+        const ctx = document.getElementById('chartPie').getContext('2d');
+        if (myChart) myChart.destroy();
+
+        myChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(conteo),
+                datasets: [{
+                    data: Object.values(conteo),
+                    backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+
+    // 6. Eventos de los Filtros
+    document.getElementById('select-departamento').addEventListener('change', function() {
+        const depSel = this.value;
+        const selectDist = document.getElementById('select-distrito');
+        
+        // Limpiar distritos
+        selectDist.innerHTML = '<option value="todos">Todos los Distritos</option>';
+        
+        let filtrados = puntosOriginales;
+        if (depSel !== "todos") {
+            filtrados = puntosOriginales.filter(p => p.DEPARTAMEN === depSel);
+            
+            // Cargar distritos del departamento elegido
+            const dists = [...new Set(filtrados.map(p => p.DISTRITO))].sort();
+            dists.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d;
+                opt.textContent = d;
+                selectDist.appendChild(opt);
+            });
+        }
+        
+        actualizarMapa(filtrados);
+        actualizarGrafico(filtrados);
+    });
+
+    document.getElementById('select-distrito').addEventListener('change', function() {
+        const depSel = document.getElementById('select-departamento').value;
+        const distSel = this.value;
+        
+        let filtrados = puntosOriginales;
+        if (depSel !== "todos") filtrados = filtrados.filter(p => p.DEPARTAMEN === depSel);
+        if (distSel !== "todos") filtrados = filtrados.filter(p => p.DISTRITO === distSel);
+        
+        actualizarMapa(filtrados);
+        actualizarGrafico(filtrados);
+    });
+
+    cargarDatos();
+</script>
 
         cargarDatos();
     </script>
