@@ -18,7 +18,7 @@
         .legend-title { font-weight: bold; margin-bottom: 8px; color: #00d2ff; display: block; }
         .legend-item { display: flex; align-items: center; margin-bottom: 4px; }
         .color-box { width: 12px; height: 12px; margin-right: 8px; border-radius: 2px; }
-        #loading { position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,0.85); padding: 10px 20px; border-radius: 20px; z-index: 2000; display: none; border: 1px solid #00d2ff; font-size: 0.8rem; }
+        #loading { position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,0.9); padding: 10px 20px; border-radius: 20px; z-index: 2000; display: none; border: 1px solid #00d2ff; font-size: 0.8rem; color: #00d2ff; font-weight: bold; }
         .chart-container { margin-top: 25px; background: #222; padding: 10px; border-radius: 8px; }
     </style>
 </head>
@@ -30,7 +30,7 @@
         <div class="filter-group">
             <label>Departamento</label>
             <select id="select-departamento">
-                <option value="todos">-- Todos --</option>
+                <option value="todos">-- Seleccione --</option>
             </select>
         </div>
 
@@ -52,7 +52,7 @@
         </div>
     </div>
 
-    <div id="loading">Sincronizando con Neon...</div>
+    <div id="loading">Sincronizando con Render & Neon...</div>
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -65,13 +65,14 @@
 
         // --- CAPAS ---
         let puntosOriginales = [];
-        let dataEnaho = [];
+        let dataEnahoFeatures = [];
         let capaResiduos = L.layerGroup().addTo(map);
 
         function getEnahoColor(d) {
             return d > 0.7 ? '#7a0177' : d > 0.4 ? '#d73027' : d > 0.1 ? '#fee08b' : '#1a9850';
         }
 
+        // Definición de Capa ENAHO con Nombres de Columna Corregidos
         let capaEnaho = L.geoJSON(null, {
             pointToLayer: function (feature, latlng) {
                 const dep = feature.properties.indice_dependencia || 0;
@@ -85,13 +86,16 @@
                 });
             },
             onEachFeature: function(feature, layer) {
+                const nombre = feature.properties.NOMCCPP || "Sin nombre"; // Mayúsculas
+                const dependencia = ((feature.properties.indice_dependencia || 0) * 100).toFixed(1);
+                
                 layer.bindPopup(`
                     <div style="color:#333; font-size:12px;">
-                        <b>${feature.properties.nomccpp || 'C.P. Desconocido'}</b><br><hr>
-                        Minas: ${feature.properties.perc_mineria.toFixed(1)}%<br>
-                        Informalidad: ${feature.properties.perc_informalidad.toFixed(1)}%<br>
-                        <b>Dependencia:</b> ${(feature.properties.indice_dependencia * 100).toFixed(1)}%<br>
-                        Confianza: <b>${feature.properties.confianza_dato}</b>
+                        <b>${nombre}</b><br><hr>
+                        Minas: ${(feature.properties.perc_mineria || 0).toFixed(1)}%<br>
+                        Informalidad: ${(feature.properties.perc_informalidad || 0).toFixed(1)}%<br>
+                        <b>Dependencia:</b> ${dependencia}%<br>
+                        Confianza: <b>${feature.properties.confianza_dato || 'N/A'}</b>
                     </div>
                 `);
             }
@@ -106,23 +110,35 @@
         let myPieChart;
         let myScatterChart;
 
-        // --- CARGA DE DATOS ---
+        // --- CARGA DE DATOS ROBUSTA ---
         async function cargarTodo() {
             document.getElementById('loading').style.display = 'block';
+            console.log("Iniciando carga de datos desde Render...");
+
             try {
-                // Cargar Residuos
+                // 1. Cargar Residuos
                 const res1 = await fetch('https://reinfo-api-1.onrender.com/puntos-reinfo');
                 puntosOriginales = await res1.json();
+                console.log("Puntos REINFO cargados:", puntosOriginales.length);
                 
-                // Cargar ENAHO
+                // 2. Cargar ENAHO
                 const res2 = await fetch('https://reinfo-api-1.onrender.com/capa-enaho');
                 const geoJsonEnaho = await res2.json();
-                dataEnaho = geoJsonEnaho.features;
+                dataEnahoFeatures = geoJsonEnaho.features;
+                
+                // Añadir datos al mapa
+                capaEnaho.clearLayers();
                 capaEnaho.addData(geoJsonEnaho);
+                console.log("Capa ENAHO cargada:", dataEnahoFeatures.length);
 
+                // Actualizar UI
                 rellenarFiltros();
-                actualizarVisualizaciones(puntosOriginales, dataEnaho);
-            } catch (e) { console.error("Error de carga:", e); }
+                actualizarVisualizaciones(puntosOriginales, dataEnahoFeatures);
+
+            } catch (e) { 
+                console.error("Error crítico en la carga:", e);
+                alert("La API está tardando en responder (Render está despertando). Por favor, refresca en 30 segundos.");
+            }
             document.getElementById('loading').style.display = 'none';
         }
 
@@ -136,17 +152,19 @@
             });
         }
 
-        function actualizarVisualizaciones(datosResiduos, datosEnahoFeatures) {
-            // 1. Mapa Residuos
+        function actualizarVisualizaciones(datosResiduos, featuresEnaho) {
+            // Actualizar Marcadores REINFO
             capaResiduos.clearLayers();
             datosResiduos.forEach(p => {
                 const color = p.residuos < -0.5 ? '#d73027' : p.residuos > 0.5 ? '#4575b4' : '#f7f7f7';
-                const marker = L.circleMarker([p.lat, p.lon], { radius: 5, fillColor: color, color: "#000", weight: 0.5, fillOpacity: 0.9 });
+                const marker = L.circleMarker([p.lat, p.lon], { 
+                    radius: 5, fillColor: color, color: "#000", weight: 0.5, fillOpacity: 0.9 
+                });
                 marker.bindPopup(`<b>${p.DISTRITO}</b><br>Residuo SEM: ${p.residuos.toFixed(3)}`);
                 capaResiduos.addLayer(marker);
             });
 
-            // 2. Gráfico Pie (Residuos)
+            // Gráfico Pie
             const conteo = { "Brecha": 0, "Equilibrio": 0, "Superávit": 0 };
             datosResiduos.forEach(p => {
                 if (p.residuos < -0.5) conteo["Brecha"]++;
@@ -164,8 +182,8 @@
                 options: { plugins: { title: { display: true, text: 'Alertas SEM (REINFO)', color: 'white' }, legend: { labels: { color: 'white', font: { size: 10 } } } } }
             });
 
-            // 3. Gráfico Scatter (Minería vs Informalidad ENAHO)
-            const scatterData = datosEnahoFeatures.map(f => ({
+            // Gráfico Scatter
+            const scatterData = featuresEnaho.map(f => ({
                 x: f.properties.perc_mineria,
                 y: f.properties.perc_informalidad
             })).filter(d => d.x > 0);
@@ -193,16 +211,21 @@
         // Filtro por Departamento
         document.getElementById('select-departamento').addEventListener('change', function() {
             const dep = this.value;
-            const filtradosRes = dep === "todos" ? puntosOriginales : puntosOriginales.filter(p => p.DEPARTAMEN === dep);
-            const filtradosEnaho = dep === "todos" ? dataEnaho : dataEnaho.filter(f => (f.properties.ubigeo || "").startsWith(getUbigeoPrefix(dep)));
+            if (dep === "todos") {
+                actualizarVisualizaciones(puntosOriginales, dataEnahoFeatures);
+                map.setView([-9.19, -75.01], 6);
+                return;
+            }
+
+            const filtradosRes = puntosOriginales.filter(p => p.DEPARTAMEN === dep);
+            const prefix = getUbigeoPrefix(dep);
+            const filtradosEnaho = dataEnahoFeatures.filter(f => (f.properties.ubigeo || "").startsWith(prefix));
             
             actualizarVisualizaciones(filtradosRes, filtradosEnaho);
             
-            // Zoom al primer punto encontrado
             if(filtradosRes.length > 0) map.flyTo([filtradosRes[0].lat, filtradosRes[0].lon], 8);
         });
 
-        // Auxiliar simple para ubigeo por departamento (primeros 2 dígitos)
         function getUbigeoPrefix(depName) {
             const deps = {"AMAZONAS":"01","ANCASH":"02","APURIMAC":"03","AREQUIPA":"04","AYACUCHO":"05","CAJAMARCA":"06","CALLAO":"07","CUSCO":"08","HUANCAVELICA":"09","HUANUCO":"10","ICA":"11","JUNIN":"12","LA LIBERTAD":"13","LAMBAYEQUE":"14","LIMA":"15","LORETO":"16","MADRE DE DIOS":"17","MOQUEGUA":"18","PASCO":"19","PIURA":"20","PUNO":"21","SAN MARTIN":"22","TACNA":"23","TUMBES":"24","UCAYALI":"25"};
             return deps[depName] || "";
