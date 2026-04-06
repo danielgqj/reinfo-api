@@ -8,39 +8,26 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; background: #0f0f0f; color: white; overflow: hidden; }
-        
-        /* Panel Izquierdo: Control y Gráficos */
         #panel-left { width: 320px; background: #181818; padding: 15px; box-sizing: border-box; overflow-y: auto; border-right: 1px solid #333; z-index: 10; }
-        
-        /* Mapa Central */
         #map { flex: 1; height: 100%; z-index: 1; }
-        
-        /* Panel Derecho: Metodología */
         #panel-right { width: 300px; background: #181818; padding: 20px; box-sizing: border-box; overflow-y: auto; border-left: 1px solid #333; font-size: 0.85rem; z-index: 10; line-height: 1.5; }
-
         h2 { color: #00d2ff; font-size: 1rem; border-bottom: 1px solid #333; padding-bottom: 8px; margin-top: 0; }
         h3 { color: #00d2ff; font-size: 0.9rem; margin-top: 15px; border-left: 3px solid #00d2ff; padding-left: 8px; }
-        
         .filter-group { margin-bottom: 12px; }
         select { width: 100%; padding: 8px; background: #252525; color: white; border: 1px solid #444; border-radius: 4px; outline: none; }
-        
         .legend { background: #222; padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 0.75rem; border: 1px solid #333; }
         .legend-item { display: flex; align-items: center; margin-bottom: 5px; }
         .color-box { width: 12px; height: 12px; margin-right: 8px; border-radius: 2px; }
-        
         .method-text { color: #bbb; text-align: justify; }
-        .method-text b { color: #fff; }
         .footer-author { margin-top: 30px; padding-top: 15px; border-top: 1px solid #333; font-size: 0.8rem; color: #666; text-align: center; font-style: italic; }
-        
-        #loading { position: fixed; top: 15px; left: 50%; transform: translateX(-50%); background: #000; color: #00d2ff; padding: 8px 20px; border-radius: 20px; z-index: 2000; border: 1px solid #00d2ff; font-size: 0.8rem; display: none; box-shadow: 0 0 15px rgba(0,210,255,0.3); }
+        #loading { position: fixed; top: 15px; left: 50%; transform: translateX(-50%); background: #000; color: #00d2ff; padding: 8px 20px; border-radius: 20px; z-index: 2000; border: 1px solid #00d2ff; font-size: 0.8rem; display: none; }
         .chart-container { margin-top: 20px; background: #222; padding: 10px; border-radius: 6px; }
     </style>
 </head>
 <body>
 
-    <div id="loading">Actualizando capas...</div>
+    <div id="loading">Actualizando datos...</div>
 
-    <!-- PANEL IZQUIERDO -->
     <div id="panel-left">
         <h2>Filtros y Resumen</h2>
         <div class="filter-group">
@@ -51,7 +38,7 @@
         </div>
 
         <div class="legend">
-            <strong>Simbología: Índice de Dependencia</strong>
+            <strong>Índice de Dependencia</strong>
             <div class="legend-item"><div class="color-box" style="background: #7a0177;"></div> Crítico (> 70%)</div>
             <div class="legend-item"><div class="color-box" style="background: #d73027;"></div> Alto (40% - 70%)</div>
             <div class="legend-item"><div class="color-box" style="background: #fee08b;"></div> Medio (10% - 40%)</div>
@@ -59,41 +46,28 @@
         </div>
 
         <div class="chart-container"><canvas id="chartPie"></canvas></div>
-        <div class="chart-container"><canvas id="chartScatter"></canvas></div>
+        <div class="chart-container"><canvas id="chartBar"></canvas></div>
     </div>
 
-    <!-- MAPA -->
     <div id="map"></div>
 
-    <!-- PANEL DERECHO -->
     <div id="panel-right">
         <h2>Ficha Metodológica</h2>
         <div class="method-text">
-            <p><b>Fuente Primaria:</b> Se utilizó la Microdatos de la <b>ENAHO 2024</b> (Encuesta Nacional de Hogares), procesando los módulos de vivienda, empleo y salud.</p>
-            
-            <h3>Variables de Intensidad:</h3>
-            <p>Se calcularon las tasas de <b>Intensidad de Población</b> para determinar qué porcentaje de la población económicamente activa ocupada en cada Centro Poblado está vinculada a:</p>
-            <ul>
-                <li><b>Minería:</b> Basado en el clasificador CIIU de extracción.</li>
-                <li><b>Informalidad:</b> Basado en la carencia de seguro de salud vinculado al empleo.</li>
-            </ul>
-
-            <h3>Cálculo del Índice:</h3>
-            <p>El <b>Índice de Dependencia</b> es el resultado de la relación porcentual entre la actividad minera y la informalidad local. Este valor oscila de 0 a 100%.</p>
-
-            <p><b>Tecnología:</b> El procesamiento se realizó íntegramente en <b>Python</b> utilizando las librerías <b>Pandas</b> para limpieza, <b>NumPy</b> para cálculos vectoriales y <b>GeoPandas</b> para la espacialización.</p>
+            <p><b>Fuente:</b> ENAHO 2024 (INEI). Procesamiento de módulos de Vivienda, Empleo y Salud.</p>
+            <h3>Intensidad Local:</h3>
+            <p>Se calcula la proporción de la PEA ocupada en minería frente a la tasa de informalidad (ausencia de seguro de salud laboral).</p>
+            <h3>Índice de Dependencia:</h3>
+            <p>Relación porcentual que mide la vulnerabilidad social frente a la actividad extractiva informal.</p>
+            <p><b>Tecnología:</b> Implementado en <b>Python</b> con <i>Pandas, NumPy y GeoPandas</i>.</p>
         </div>
-        
-        <div class="footer-author">
-            Autor: Daniel G. Quispe Jiménez
-        </div>
+        <div class="footer-author">Autor: Daniel G. Quispe Jiménez</div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         const map = L.map('map').setView([-9.19, -75.01], 6);
-        
-        const googleHybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+        L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
             maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3'], attribution: '© Google'
         }).addTo(map);
 
@@ -101,61 +75,42 @@
         let dataEnahoFeatures = [];
         let capaResiduos = L.layerGroup().addTo(map);
 
-        // CORRECCIÓN: La función ahora recibe valores de 0 a 100
         function getEnahoColor(d) {
-            return d > 70 ? '#7a0177' : 
-                   d > 40 ? '#d73027' : 
-                   d > 10 ? '#fee08b' : 
-                            '#1a9850';
+            return d > 70 ? '#7a0177' : d > 40 ? '#d73027' : d > 10 ? '#fee08b' : '#1a9850';
         }
 
         let capaEnaho = L.geoJSON(null, {
-            pointToLayer: function (feature, latlng) {
-                const props = feature.properties;
-                // Ajuste de nombres de columna según tu especificación
-                const dep = props.indice_dep || 0; 
-                const conf = props.confianza_ || 'Baja';
-                
-                return L.circleMarker(latlng, {
-                    radius: 7,
-                    fillColor: getEnahoColor(dep),
-                    color: conf === 'Alta' ? '#000' : 'transparent',
-                    weight: 1.5,
-                    fillOpacity: 0.8
-                });
-            },
-            onEachFeature: function(feature, layer) {
-                const props = feature.properties;
-                layer.bindPopup(`
-                    <div style="color:#333; font-size:12px; font-family: sans-serif;">
-                        <b style="color: #0078A8;">${props.nomccpp || 'Centro Poblado'}</b><br><hr>
-                        Minería (Intensidad): <b>${(props.perc_miner || 0).toFixed(1)}%</b><br>
-                        Informalidad (Intensidad): <b>${(props.perc_infor || 0).toFixed(1)}%</b><br>
-                        <b>Índice de Dependencia:</b> <span style="color:red">${(props.indice_dep || 0).toFixed(1)}%</span><br>
-                        Confianza Estadística: <b>${props.confianza_ || 'Baja'}</b>
-                    </div>
-                `);
-            }
+            pointToLayer: (f, l) => L.circleMarker(l, {
+                radius: 7,
+                fillColor: getEnahoColor(f.properties.indice_dep),
+                color: f.properties.confianza_ === 'Alta' ? '#000' : 'transparent',
+                weight: 1.5, fillOpacity: 0.8
+            }),
+            onEachFeature: (f, l) => l.bindPopup(`
+                <div style="color:#333; font-size:12px;">
+                    <b>${f.properties.nomccpp}</b><hr>
+                    Minería: ${f.properties.perc_miner.toFixed(1)}%<br>
+                    Informalidad: ${f.properties.perc_infor.toFixed(1)}%<br>
+                    <b>Índice Dep: ${f.properties.indice_dep.toFixed(1)}%</b>
+                </div>
+            `)
         }).addTo(map);
 
-        const overlays = { "Residuos SEM": capaResiduos, "Indicadores ENAHO 2024": capaEnaho };
+        const overlays = { "Residuos SEM": capaResiduos, "Indicadores ENAHO": capaEnaho };
         L.control.layers(null, overlays, { collapsed: false }).addTo(map);
 
-        let myPieChart, myScatterChart;
+        let myPieChart, myBarChart;
 
         async function cargarTodo() {
             document.getElementById('loading').style.display = 'block';
             try {
-                const res1 = await fetch('https://reinfo-api-1.onrender.com/puntos-reinfo');
-                puntosOriginales = await res1.json();
-                
-                const res2 = await fetch('https://reinfo-api-1.onrender.com/capa-enaho');
-                const geoJsonEnaho = await res2.json();
-                dataEnahoFeatures = geoJsonEnaho.features;
-                
-                capaEnaho.clearLayers();
-                capaEnaho.addData(geoJsonEnaho);
-
+                const [r1, r2] = await Promise.all([
+                    fetch('https://reinfo-api-1.onrender.com/puntos-reinfo').then(r => r.json()),
+                    fetch('https://reinfo-api-1.onrender.com/capa-enaho').then(r => r.json())
+                ]);
+                puntosOriginales = r1;
+                dataEnahoFeatures = r2.features;
+                capaEnaho.clearLayers().addData(r2);
                 rellenarFiltros();
                 actualizarVisualizaciones(puntosOriginales, dataEnahoFeatures);
             } catch (e) { console.error(e); }
@@ -173,34 +128,53 @@
         }
 
         function actualizarVisualizaciones(datosRes, featuresEnaho) {
+            // Mapa Residuos
             capaResiduos.clearLayers();
             datosRes.forEach(p => {
                 const color = p.residuos < -0.5 ? '#d73027' : p.residuos > 0.5 ? '#4575b4' : '#f7f7f7';
                 capaResiduos.addLayer(L.circleMarker([p.lat, p.lon], { radius: 4, fillColor: color, color: "#000", weight: 0.3, fillOpacity: 0.8 }));
             });
 
-            // Gráfico Circular SEM
+            // Gráfico Pie SEM
             const c = { "Alerta": 0, "Normal": 0, "Bienestar": 0 };
             datosRes.forEach(p => { if (p.residuos < -0.5) c["Alerta"]++; else if (p.residuos > 0.5) c["Bienestar"]++; else c["Normal"]++; });
             if (myPieChart) myPieChart.destroy();
             myPieChart = new Chart(document.getElementById('chartPie'), {
                 type: 'doughnut',
                 data: { labels: Object.keys(c), datasets: [{ data: Object.values(c), backgroundColor: ['#d73027', '#f7f7f7', '#4575b4'] }] },
-                options: { plugins: { title: { display: true, text: 'Distribución Alertas SEM', color: 'white', font: {size: 11} }, legend: { position: 'bottom', labels: { color: 'white', font: {size: 9} } } } }
+                options: { plugins: { title: { display: true, text: 'Alertas SEM (REINFO)', color: 'white' }, legend: { position: 'bottom', labels: { color: 'white', font: {size: 9} } } } }
             });
 
-            // Gráfico Scatter Correlación
-            const sData = featuresEnaho.map(f => ({ x: f.properties.perc_miner, y: f.properties.perc_infor })).filter(d => d.x > 0);
-            if (myScatterChart) myScatterChart.destroy();
-            myScatterChart = new Chart(document.getElementById('chartScatter'), {
-                type: 'scatter',
-                data: { datasets: [{ label: 'Centros Poblados', data: sData, backgroundColor: 'rgba(0, 210, 255, 0.5)' }] },
+            // Gráfico de Barras: Distribución del Índice ENAHO
+            const dist = { "Crítico": 0, "Alto": 0, "Medio": 0, "Bajo": 0 };
+            featuresEnaho.forEach(f => {
+                const val = f.properties.indice_dep;
+                if (val > 70) dist["Crítico"]++;
+                else if (val > 40) dist["Alto"]++;
+                else if (val > 10) dist["Medio"]++;
+                else dist["Bajo"]++;
+            });
+
+            if (myBarChart) myBarChart.destroy();
+            myBarChart = new Chart(document.getElementById('chartBar'), {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(dist),
+                    datasets: [{
+                        label: 'Centros Poblados',
+                        data: Object.values(dist),
+                        backgroundColor: ['#7a0177', '#d73027', '#fee08b', '#1a9850']
+                    }]
+                },
                 options: {
                     scales: { 
-                        x: { title: { display: true, text: '% Minería', color: '#888' }, grid: {color: '#333'} }, 
-                        y: { title: { display: true, text: '% Informal', color: '#888' }, grid: {color: '#333'} } 
+                        y: { beginAtZero: true, grid: { color: '#333' }, ticks: { color: '#888' } },
+                        x: { grid: { display: false }, ticks: { color: '#888' } }
                     },
-                    plugins: { title: { display: true, text: 'Minería vs Informalidad', color: 'white', font: {size: 11} }, legend: { display: false } }
+                    plugins: { 
+                        title: { display: true, text: 'Frecuencia por Índice Dep.', color: 'white' },
+                        legend: { display: false }
+                    }
                 }
             });
         }
