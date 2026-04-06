@@ -12,14 +12,14 @@ import uvicorn
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(dotenv_path=BASE_DIR / ".env")
 
-app = FastAPI(title="API REINFO - Dashboard Mode")
+app = FastAPI(title="API REINFO & ENAHO - Dashboard Mode")
 
 # ---------------------------------------------------------
-# CONFIGURACIÓN DE CORS - ESTO ARREGLA EL ERROR DE CONEXIÓN
+# CONFIGURACIÓN DE CORS
 # ---------------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Permite que tu GitHub Pages acceda a los datos
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -33,30 +33,42 @@ engine = create_engine(DATABASE_URL, connect_args={"sslmode": "require"})
 def home():
     return {
         "status": "online", 
-        "endpoint": "/puntos-reinfo"
+        "endpoints": ["/puntos-reinfo", "/capa-enaho"]
     }
 
+# --- RUTA EXISTENTE: Puntos REINFO ---
 @app.get("/puntos-reinfo")
 def obtener_puntos():
     try:
-        # Consulta a tu tabla en Neon
         query = "SELECT * FROM reinfo_residuos"
-        
-        # Leemos los datos espaciales
         gdf = gpd.read_postgis(query, engine, geom_col='geometry')
         
-        # Extraemos coordenadas para que Leaflet las reconozca como p.lat y p.lon
+        # Coordenadas para Leaflet
         gdf['lat'] = gdf.geometry.y
         gdf['lon'] = gdf.geometry.x
         
-        # Quitamos la columna geometry (no se puede enviar por JSON estándar)
         df_final = gdf.drop(columns=['geometry'])
-        
-        # Convertimos a lista de diccionarios (Formato JSON simple para el Dashboard)
         return json.loads(df_final.to_json(orient='records'))
     
     except Exception as e:
-        return {"error": str(e), "detalle": "Error al procesar la tabla 'reinfo_residuos'"}
+        return {"error": str(e), "detalle": "Error en tabla 'reinfo_residuos'"}
+
+# --- NUEVA RUTA: Capa ENAHO (Polígonos/Áreas) ---
+@app.get("/capa-enaho")
+def obtener_enaho():
+    try:
+        # Usamos el nombre exacto de la tabla que subiste con el script anterior
+        query = "SELECT * FROM indice_dependencia_enaho_2024"
+        
+        # Leemos de Neon
+        gdf = gpd.read_postgis(query, engine, geom_col='geometry')
+        
+        # Importante: Como son polígonos, usamos GeoJSON puro (to_json)
+        # Esto permite que Leaflet dibuje las formas de los distritos correctamente
+        return json.loads(gdf.to_json())
+    
+    except Exception as e:
+        return {"error": str(e), "detalle": "Error en tabla 'indice_dependencia_enaho_2024'"}
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
