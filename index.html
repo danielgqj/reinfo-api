@@ -51,17 +51,27 @@
 
     <div id="map"></div>
 
-    <div id="panel-right">
+<div id="panel-right">
         <h2>Ficha Metodológica</h2>
         <div class="method-text">
-            <p><b>Fuente:</b> ENAHO 2024 (INEI). Procesamiento de módulos de Vivienda, Empleo y Salud.</p>
-            <h3>Intensidad Local:</h3>
-            <p>Se calcula la proporción de la PEA ocupada en minería frente a la tasa de informalidad (ausencia de seguro de salud laboral).</p>
-            <h3>Índice de Dependencia:</h3>
-            <p>Relación porcentual que mide la vulnerabilidad social frente a la actividad extractiva informal.</p>
-            <p><b>Tecnología:</b> Implementado en <b>Python</b> con <i>Pandas, NumPy y GeoPandas</i>.</p>
+            <p><b>Fuente Primaria:</b> Se utilizó la Microdatos de la <b>ENAHO 2024</b> (Encuesta Nacional de Hogares), procesando los módulos de vivienda, empleo y salud.</p>
+            
+            <h3>Variables de Intensidad:</h3>
+            <p>Se calcularon las tasas de <b>Intensidad de Población</b> para determinar qué porcentaje de la población económicamente activa ocupada en cada Centro Poblado está vinculada a:</p>
+            <ul>
+                <li><b>Minería:</b> Basado en el clasificador CIIU de extracción.</li>
+                <li><b>Informalidad:</b> Basado en la carencia de seguro de salud vinculado al empleo.</li>
+            </ul>
+
+            <h3>Cálculo del Índice:</h3>
+            <p>El <b>Índice de Dependencia</b> es el resultado de la relación porcentual entre la actividad minera y la informalidad local. Este valor oscila de 0 a 100%.</p>
+
+            <p><b>Tecnología:</b> El procesamiento se realizó íntegramente en <b>Python</b> utilizando las librerías <b>Pandas</b> para limpieza, <b>NumPy</b> para cálculos vectoriales y <b>GeoPandas</b> para la espacialización.</p>
         </div>
-        <div class="footer-author">Autor: Daniel G. Quispe Jiménez</div>
+        
+        <div class="footer-author">
+            Autor: Daniel G. Quispe Jiménez
+        </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
