@@ -9,74 +9,79 @@
     <style>
         body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; background: #0f0f0f; color: white; overflow: hidden; }
         
-        /* Panel Izquierdo: Filtros y Gráficos */
+        /* Panel Izquierdo: Control y Gráficos */
         #panel-left { width: 320px; background: #181818; padding: 15px; box-sizing: border-box; overflow-y: auto; border-right: 1px solid #333; z-index: 10; }
         
         /* Mapa Central */
         #map { flex: 1; height: 100%; z-index: 1; }
         
         /* Panel Derecho: Metodología */
-        #panel-right { width: 280px; background: #181818; padding: 15px; box-sizing: border-box; overflow-y: auto; border-left: 1px solid #333; font-size: 0.85rem; z-index: 10; }
+        #panel-right { width: 300px; background: #181818; padding: 20px; box-sizing: border-box; overflow-y: auto; border-left: 1px solid #333; font-size: 0.85rem; z-index: 10; line-height: 1.5; }
 
         h2 { color: #00d2ff; font-size: 1rem; border-bottom: 1px solid #333; padding-bottom: 8px; margin-top: 0; }
-        h3 { color: #00d2ff; font-size: 0.9rem; margin-top: 15px; }
+        h3 { color: #00d2ff; font-size: 0.9rem; margin-top: 15px; border-left: 3px solid #00d2ff; padding-left: 8px; }
         
         .filter-group { margin-bottom: 12px; }
-        select { width: 100%; padding: 6px; background: #252525; color: white; border: 1px solid #444; border-radius: 4px; }
+        select { width: 100%; padding: 8px; background: #252525; color: white; border: 1px solid #444; border-radius: 4px; outline: none; }
         
-        .legend { background: #222; padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 0.7rem; border: 1px solid #333; }
-        .legend-item { display: flex; align-items: center; margin-bottom: 3px; }
-        .color-box { width: 10px; height: 10px; margin-right: 6px; border-radius: 2px; }
+        .legend { background: #222; padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 0.75rem; border: 1px solid #333; }
+        .legend-item { display: flex; align-items: center; margin-bottom: 5px; }
+        .color-box { width: 12px; height: 12px; margin-right: 8px; border-radius: 2px; }
         
-        .method-box { line-height: 1.4; color: #ccc; }
-        .method-box b { color: #fff; }
-        .footer-author { margin-top: 20px; padding-top: 10px; border-top: 1px solid #444; font-size: 0.75rem; color: #888; text-align: center; }
+        .method-text { color: #bbb; text-align: justify; }
+        .method-text b { color: #fff; }
+        .footer-author { margin-top: 30px; padding-top: 15px; border-top: 1px solid #333; font-size: 0.8rem; color: #666; text-align: center; font-style: italic; }
         
-        #loading { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(0,210,255,0.2); color: #00d2ff; padding: 5px 15px; border-radius: 15px; z-index: 2000; border: 1px solid #00d2ff; font-size: 0.75rem; display: none; }
-        .chart-container { margin-top: 20px; background: #222; padding: 8px; border-radius: 6px; }
+        #loading { position: fixed; top: 15px; left: 50%; transform: translateX(-50%); background: #000; color: #00d2ff; padding: 8px 20px; border-radius: 20px; z-index: 2000; border: 1px solid #00d2ff; font-size: 0.8rem; display: none; box-shadow: 0 0 15px rgba(0,210,255,0.3); }
+        .chart-container { margin-top: 20px; background: #222; padding: 10px; border-radius: 6px; }
     </style>
 </head>
 <body>
 
-    <div id="loading">Sincronizando con base de datos...</div>
+    <div id="loading">Actualizando capas...</div>
 
+    <!-- PANEL IZQUIERDO -->
     <div id="panel-left">
-        <h2>Filtros y Análisis</h2>
+        <h2>Filtros y Resumen</h2>
         <div class="filter-group">
-            <label style="font-size: 0.7rem; color: #888;">DEPARTAMENTO</label>
+            <label style="font-size: 0.7rem; color: #888; letter-spacing: 1px;">DEPARTAMENTO</label>
             <select id="select-departamento">
                 <option value="todos">-- Todos --</option>
             </select>
         </div>
 
         <div class="legend">
-            <strong>Indice Dependencia</strong>
-            <div class="legend-item"><div class="color-box" style="background: #7a0177;"></div> Crítico (>70%)</div>
-            <div class="legend-item"><div class="color-box" style="background: #d73027;"></div> Alto (40-70%)</div>
-            <div class="legend-item"><div class="color-box" style="background: #fee08b;"></div> Medio (10-40%)</div>
-            <div class="legend-item"><div class="color-box" style="background: #1a9850;"></div> Bajo (<10%)</div>
+            <strong>Simbología: Índice de Dependencia</strong>
+            <div class="legend-item"><div class="color-box" style="background: #7a0177;"></div> Crítico (> 70%)</div>
+            <div class="legend-item"><div class="color-box" style="background: #d73027;"></div> Alto (40% - 70%)</div>
+            <div class="legend-item"><div class="color-box" style="background: #fee08b;"></div> Medio (10% - 40%)</div>
+            <div class="legend-item"><div class="color-box" style="background: #1a9850;"></div> Bajo (< 10%)</div>
         </div>
 
         <div class="chart-container"><canvas id="chartPie"></canvas></div>
         <div class="chart-container"><canvas id="chartScatter"></canvas></div>
     </div>
 
+    <!-- MAPA -->
     <div id="map"></div>
 
+    <!-- PANEL DERECHO -->
     <div id="panel-right">
-        <h2>Metodología</h2>
-        <div class="method-box">
-            <p><b>Fuente:</b> Encuesta Nacional de Hogares (ENAHO) 2024 - INEI.</p>
-            <p><b>Procesamiento:</b> Se integraron los módulos de Vivienda y Empleo mediante <b>Python</b> utilizando las librerías <i>Pandas, NumPy y GeoPandas</i>.</p>
+        <h2>Ficha Metodológica</h2>
+        <div class="method-text">
+            <p><b>Fuente Primaria:</b> Se utilizó la Microdatos de la <b>ENAHO 2024</b> (Encuesta Nacional de Hogares), procesando los módulos de vivienda, empleo y salud.</p>
             
-            <h3>Cálculos Clave:</h3>
+            <h3>Variables de Intensidad:</h3>
+            <p>Se calcularon las tasas de <b>Intensidad de Población</b> para determinar qué porcentaje de la población económicamente activa ocupada en cada Centro Poblado está vinculada a:</p>
             <ul>
-                <li><b>% Minería:</b> Población ocupada en extracción de carbón, petróleo o minerales metálicos.</li>
-                <li><b>% Informalidad:</b> Trabajadores sin seguro de salud financiado por el empleador.</li>
-                <li><b>Índice:</b> Correlación entre la dependencia minera y la vulnerabilidad laboral.</li>
+                <li><b>Minería:</b> Basado en el clasificador CIIU de extracción.</li>
+                <li><b>Informalidad:</b> Basado en la carencia de seguro de salud vinculado al empleo.</li>
             </ul>
-            
-            <p><b>Confianza:</b> Los puntos con borde negro indican una muestra estadística robusta (n ≥ 15 encuestas en el C.P.).</p>
+
+            <h3>Cálculo del Índice:</h3>
+            <p>El <b>Índice de Dependencia</b> es el resultado de la relación porcentual entre la actividad minera y la informalidad local. Este valor oscila de 0 a 100%.</p>
+
+            <p><b>Tecnología:</b> El procesamiento se realizó íntegramente en <b>Python</b> utilizando las librerías <b>Pandas</b> para limpieza, <b>NumPy</b> para cálculos vectoriales y <b>GeoPandas</b> para la espacialización.</p>
         </div>
         
         <div class="footer-author">
@@ -96,18 +101,23 @@
         let dataEnahoFeatures = [];
         let capaResiduos = L.layerGroup().addTo(map);
 
+        // CORRECCIÓN: La función ahora recibe valores de 0 a 100
         function getEnahoColor(d) {
-            return d > 0.7 ? '#7a0177' : d > 0.4 ? '#d73027' : d > 0.1 ? '#fee08b' : '#1a9850';
+            return d > 70 ? '#7a0177' : 
+                   d > 40 ? '#d73027' : 
+                   d > 10 ? '#fee08b' : 
+                            '#1a9850';
         }
 
-        // CAPA ENAHO CON NOMBRES DE COLUMNA CORREGIDOS
         let capaEnaho = L.geoJSON(null, {
             pointToLayer: function (feature, latlng) {
                 const props = feature.properties;
-                const dep = props.indice_dep || 0;
+                // Ajuste de nombres de columna según tu especificación
+                const dep = props.indice_dep || 0; 
                 const conf = props.confianza_ || 'Baja';
+                
                 return L.circleMarker(latlng, {
-                    radius: 6,
+                    radius: 7,
                     fillColor: getEnahoColor(dep),
                     color: conf === 'Alta' ? '#000' : 'transparent',
                     weight: 1.5,
@@ -117,18 +127,18 @@
             onEachFeature: function(feature, layer) {
                 const props = feature.properties;
                 layer.bindPopup(`
-                    <div style="color:#333; font-size:11px;">
-                        <b>${props.nomccpp || 'C.P.'}</b><br><hr>
-                        Minería: ${(props.perc_miner || 0).toFixed(1)}%<br>
-                        Informalidad: ${(props.perc_infor || 0).toFixed(1)}%<br>
-                        <b>Índice Dep:</b> ${((props.indice_dep || 0) * 100).toFixed(1)}%<br>
-                        Confianza: <b>${props.confianza_ || 'Baja'}</b>
+                    <div style="color:#333; font-size:12px; font-family: sans-serif;">
+                        <b style="color: #0078A8;">${props.nomccpp || 'Centro Poblado'}</b><br><hr>
+                        Minería (Intensidad): <b>${(props.perc_miner || 0).toFixed(1)}%</b><br>
+                        Informalidad (Intensidad): <b>${(props.perc_infor || 0).toFixed(1)}%</b><br>
+                        <b>Índice de Dependencia:</b> <span style="color:red">${(props.indice_dep || 0).toFixed(1)}%</span><br>
+                        Confianza Estadística: <b>${props.confianza_ || 'Baja'}</b>
                     </div>
                 `);
             }
         }).addTo(map);
 
-        const overlays = { "Residuos SEM": capaResiduos, "Indicadores ENAHO": capaEnaho };
+        const overlays = { "Residuos SEM": capaResiduos, "Indicadores ENAHO 2024": capaEnaho };
         L.control.layers(null, overlays, { collapsed: false }).addTo(map);
 
         let myPieChart, myScatterChart;
@@ -169,24 +179,27 @@
                 capaResiduos.addLayer(L.circleMarker([p.lat, p.lon], { radius: 4, fillColor: color, color: "#000", weight: 0.3, fillOpacity: 0.8 }));
             });
 
-            // Gráfico Circular
+            // Gráfico Circular SEM
             const c = { "Alerta": 0, "Normal": 0, "Bienestar": 0 };
             datosRes.forEach(p => { if (p.residuos < -0.5) c["Alerta"]++; else if (p.residuos > 0.5) c["Bienestar"]++; else c["Normal"]++; });
             if (myPieChart) myPieChart.destroy();
             myPieChart = new Chart(document.getElementById('chartPie'), {
                 type: 'doughnut',
                 data: { labels: Object.keys(c), datasets: [{ data: Object.values(c), backgroundColor: ['#d73027', '#f7f7f7', '#4575b4'] }] },
-                options: { plugins: { title: { display: true, text: 'Distribución SEM', color: 'white', font: {size: 11} }, legend: { position: 'bottom', labels: { color: 'white', font: {size: 9} } } } }
+                options: { plugins: { title: { display: true, text: 'Distribución Alertas SEM', color: 'white', font: {size: 11} }, legend: { position: 'bottom', labels: { color: 'white', font: {size: 9} } } } }
             });
 
-            // Gráfico Scatter
+            // Gráfico Scatter Correlación
             const sData = featuresEnaho.map(f => ({ x: f.properties.perc_miner, y: f.properties.perc_infor })).filter(d => d.x > 0);
             if (myScatterChart) myScatterChart.destroy();
             myScatterChart = new Chart(document.getElementById('chartScatter'), {
                 type: 'scatter',
-                data: { datasets: [{ label: 'Centros P.', data: sData, backgroundColor: 'rgba(0, 210, 255, 0.5)' }] },
+                data: { datasets: [{ label: 'Centros Poblados', data: sData, backgroundColor: 'rgba(0, 210, 255, 0.5)' }] },
                 options: {
-                    scales: { x: { title: { display: true, text: '% Minería', color: '#888' } }, y: { title: { display: true, text: '% Informal', color: '#888' } } },
+                    scales: { 
+                        x: { title: { display: true, text: '% Minería', color: '#888' }, grid: {color: '#333'} }, 
+                        y: { title: { display: true, text: '% Informal', color: '#888' }, grid: {color: '#333'} } 
+                    },
                     plugins: { title: { display: true, text: 'Minería vs Informalidad', color: 'white', font: {size: 11} }, legend: { display: false } }
                 }
             });
