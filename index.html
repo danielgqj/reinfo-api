@@ -7,53 +7,82 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; height: 100vh; background: #0f0f0f; color: white; }
-        #map { flex: 1; height: 100%; }
-        #panel { width: 380px; background: #181818; padding: 20px; box-sizing: border-box; overflow-y: auto; border-right: 1px solid #333; z-index: 1000; }
-        h2 { color: #00d2ff; font-size: 1.1rem; border-bottom: 1px solid #333; padding-bottom: 10px; margin-top: 0; }
-        .filter-group { margin-bottom: 15px; }
-        label { display: block; font-size: 0.8rem; color: #aaa; margin-bottom: 5px; }
-        select { width: 100%; padding: 8px; background: #252525; color: white; border: 1px solid #444; border-radius: 4px; outline: none; }
-        .legend { background: #222; padding: 12px; border-radius: 8px; margin-top: 15px; font-size: 0.75rem; border: 1px solid #333; }
-        .legend-title { font-weight: bold; margin-bottom: 8px; color: #00d2ff; display: block; }
-        .legend-item { display: flex; align-items: center; margin-bottom: 4px; }
-        .color-box { width: 12px; height: 12px; margin-right: 8px; border-radius: 2px; }
-        #loading { position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,0.9); padding: 10px 20px; border-radius: 20px; z-index: 2000; display: none; border: 1px solid #00d2ff; font-size: 0.8rem; color: #00d2ff; font-weight: bold; }
-        .chart-container { margin-top: 25px; background: #222; padding: 10px; border-radius: 8px; }
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; background: #0f0f0f; color: white; overflow: hidden; }
+        
+        /* Panel Izquierdo: Filtros y Gráficos */
+        #panel-left { width: 320px; background: #181818; padding: 15px; box-sizing: border-box; overflow-y: auto; border-right: 1px solid #333; z-index: 10; }
+        
+        /* Mapa Central */
+        #map { flex: 1; height: 100%; z-index: 1; }
+        
+        /* Panel Derecho: Metodología */
+        #panel-right { width: 280px; background: #181818; padding: 15px; box-sizing: border-box; overflow-y: auto; border-left: 1px solid #333; font-size: 0.85rem; z-index: 10; }
+
+        h2 { color: #00d2ff; font-size: 1rem; border-bottom: 1px solid #333; padding-bottom: 8px; margin-top: 0; }
+        h3 { color: #00d2ff; font-size: 0.9rem; margin-top: 15px; }
+        
+        .filter-group { margin-bottom: 12px; }
+        select { width: 100%; padding: 6px; background: #252525; color: white; border: 1px solid #444; border-radius: 4px; }
+        
+        .legend { background: #222; padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 0.7rem; border: 1px solid #333; }
+        .legend-item { display: flex; align-items: center; margin-bottom: 3px; }
+        .color-box { width: 10px; height: 10px; margin-right: 6px; border-radius: 2px; }
+        
+        .method-box { line-height: 1.4; color: #ccc; }
+        .method-box b { color: #fff; }
+        .footer-author { margin-top: 20px; padding-top: 10px; border-top: 1px solid #444; font-size: 0.75rem; color: #888; text-align: center; }
+        
+        #loading { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(0,210,255,0.2); color: #00d2ff; padding: 5px 15px; border-radius: 15px; z-index: 2000; border: 1px solid #00d2ff; font-size: 0.75rem; display: none; }
+        .chart-container { margin-top: 20px; background: #222; padding: 8px; border-radius: 6px; }
     </style>
 </head>
 <body>
 
-    <div id="panel">
-        <h2>Análisis Socioeconómico 2024</h2>
-        
+    <div id="loading">Sincronizando con base de datos...</div>
+
+    <div id="panel-left">
+        <h2>Filtros y Análisis</h2>
         <div class="filter-group">
-            <label>Departamento</label>
+            <label style="font-size: 0.7rem; color: #888;">DEPARTAMENTO</label>
             <select id="select-departamento">
-                <option value="todos">-- Seleccione --</option>
+                <option value="todos">-- Todos --</option>
             </select>
         </div>
 
         <div class="legend">
-            <span class="legend-title">Indice Dependencia (ENAHO)</span>
+            <strong>Indice Dependencia</strong>
             <div class="legend-item"><div class="color-box" style="background: #7a0177;"></div> Crítico (>70%)</div>
             <div class="legend-item"><div class="color-box" style="background: #d73027;"></div> Alto (40-70%)</div>
             <div class="legend-item"><div class="color-box" style="background: #fee08b;"></div> Medio (10-40%)</div>
             <div class="legend-item"><div class="color-box" style="background: #1a9850;"></div> Bajo (<10%)</div>
-            <small style="color:#888; display:block; margin-top:5px;">*Borde negro: Alta Confianza</small>
         </div>
 
-        <div class="chart-container">
-            <canvas id="chartPie"></canvas>
-        </div>
-
-        <div class="chart-container">
-            <canvas id="chartScatter"></canvas>
-        </div>
+        <div class="chart-container"><canvas id="chartPie"></canvas></div>
+        <div class="chart-container"><canvas id="chartScatter"></canvas></div>
     </div>
 
-    <div id="loading">Sincronizando con Render & Neon...</div>
     <div id="map"></div>
+
+    <div id="panel-right">
+        <h2>Metodología</h2>
+        <div class="method-box">
+            <p><b>Fuente:</b> Encuesta Nacional de Hogares (ENAHO) 2024 - INEI.</p>
+            <p><b>Procesamiento:</b> Se integraron los módulos de Vivienda y Empleo mediante <b>Python</b> utilizando las librerías <i>Pandas, NumPy y GeoPandas</i>.</p>
+            
+            <h3>Cálculos Clave:</h3>
+            <ul>
+                <li><b>% Minería:</b> Población ocupada en extracción de carbón, petróleo o minerales metálicos.</li>
+                <li><b>% Informalidad:</b> Trabajadores sin seguro de salud financiado por el empleador.</li>
+                <li><b>Índice:</b> Correlación entre la dependencia minera y la vulnerabilidad laboral.</li>
+            </ul>
+            
+            <p><b>Confianza:</b> Los puntos con borde negro indican una muestra estadística robusta (n ≥ 15 encuestas en el C.P.).</p>
+        </div>
+        
+        <div class="footer-author">
+            Autor: Daniel G. Quispe Jiménez
+        </div>
+    </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
@@ -63,7 +92,6 @@
             maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3'], attribution: '© Google'
         }).addTo(map);
 
-        // --- CAPAS ---
         let puntosOriginales = [];
         let dataEnahoFeatures = [];
         let capaResiduos = L.layerGroup().addTo(map);
@@ -72,73 +100,55 @@
             return d > 0.7 ? '#7a0177' : d > 0.4 ? '#d73027' : d > 0.1 ? '#fee08b' : '#1a9850';
         }
 
-        // Definición de Capa ENAHO con Nombres de Columna Corregidos
+        // CAPA ENAHO CON NOMBRES DE COLUMNA CORREGIDOS
         let capaEnaho = L.geoJSON(null, {
             pointToLayer: function (feature, latlng) {
-                const dep = feature.properties.indice_dependencia || 0;
-                const conf = feature.properties.confianza_dato || 'Baja';
+                const props = feature.properties;
+                const dep = props.indice_dep || 0;
+                const conf = props.confianza_ || 'Baja';
                 return L.circleMarker(latlng, {
-                    radius: 7,
+                    radius: 6,
                     fillColor: getEnahoColor(dep),
                     color: conf === 'Alta' ? '#000' : 'transparent',
-                    weight: 2,
+                    weight: 1.5,
                     fillOpacity: 0.8
                 });
             },
             onEachFeature: function(feature, layer) {
-                const nombre = feature.properties.NOMCCPP || "Sin nombre"; // Mayúsculas
-                const dependencia = ((feature.properties.indice_dependencia || 0) * 100).toFixed(1);
-                
+                const props = feature.properties;
                 layer.bindPopup(`
-                    <div style="color:#333; font-size:12px;">
-                        <b>${nombre}</b><br><hr>
-                        Minas: ${(feature.properties.perc_mineria || 0).toFixed(1)}%<br>
-                        Informalidad: ${(feature.properties.perc_informalidad || 0).toFixed(1)}%<br>
-                        <b>Dependencia:</b> ${dependencia}%<br>
-                        Confianza: <b>${feature.properties.confianza_dato || 'N/A'}</b>
+                    <div style="color:#333; font-size:11px;">
+                        <b>${props.nomccpp || 'C.P.'}</b><br><hr>
+                        Minería: ${(props.perc_miner || 0).toFixed(1)}%<br>
+                        Informalidad: ${(props.perc_infor || 0).toFixed(1)}%<br>
+                        <b>Índice Dep:</b> ${((props.indice_dep || 0) * 100).toFixed(1)}%<br>
+                        Confianza: <b>${props.confianza_ || 'Baja'}</b>
                     </div>
                 `);
             }
         }).addTo(map);
 
-        const overlays = {
-            "Anomalías REINFO (Puntos)": capaResiduos,
-            "Índice ENAHO (Centros P.)": capaEnaho
-        };
+        const overlays = { "Residuos SEM": capaResiduos, "Indicadores ENAHO": capaEnaho };
         L.control.layers(null, overlays, { collapsed: false }).addTo(map);
 
-        let myPieChart;
-        let myScatterChart;
+        let myPieChart, myScatterChart;
 
-        // --- CARGA DE DATOS ROBUSTA ---
         async function cargarTodo() {
             document.getElementById('loading').style.display = 'block';
-            console.log("Iniciando carga de datos desde Render...");
-
             try {
-                // 1. Cargar Residuos
                 const res1 = await fetch('https://reinfo-api-1.onrender.com/puntos-reinfo');
                 puntosOriginales = await res1.json();
-                console.log("Puntos REINFO cargados:", puntosOriginales.length);
                 
-                // 2. Cargar ENAHO
                 const res2 = await fetch('https://reinfo-api-1.onrender.com/capa-enaho');
                 const geoJsonEnaho = await res2.json();
                 dataEnahoFeatures = geoJsonEnaho.features;
                 
-                // Añadir datos al mapa
                 capaEnaho.clearLayers();
                 capaEnaho.addData(geoJsonEnaho);
-                console.log("Capa ENAHO cargada:", dataEnahoFeatures.length);
 
-                // Actualizar UI
                 rellenarFiltros();
                 actualizarVisualizaciones(puntosOriginales, dataEnahoFeatures);
-
-            } catch (e) { 
-                console.error("Error crítico en la carga:", e);
-                alert("La API está tardando en responder (Render está despertando). Por favor, refresca en 30 segundos.");
-            }
+            } catch (e) { console.error(e); }
             document.getElementById('loading').style.display = 'none';
         }
 
@@ -152,84 +162,44 @@
             });
         }
 
-        function actualizarVisualizaciones(datosResiduos, featuresEnaho) {
-            // Actualizar Marcadores REINFO
+        function actualizarVisualizaciones(datosRes, featuresEnaho) {
             capaResiduos.clearLayers();
-            datosResiduos.forEach(p => {
+            datosRes.forEach(p => {
                 const color = p.residuos < -0.5 ? '#d73027' : p.residuos > 0.5 ? '#4575b4' : '#f7f7f7';
-                const marker = L.circleMarker([p.lat, p.lon], { 
-                    radius: 5, fillColor: color, color: "#000", weight: 0.5, fillOpacity: 0.9 
-                });
-                marker.bindPopup(`<b>${p.DISTRITO}</b><br>Residuo SEM: ${p.residuos.toFixed(3)}`);
-                capaResiduos.addLayer(marker);
+                capaResiduos.addLayer(L.circleMarker([p.lat, p.lon], { radius: 4, fillColor: color, color: "#000", weight: 0.3, fillOpacity: 0.8 }));
             });
 
-            // Gráfico Pie
-            const conteo = { "Brecha": 0, "Equilibrio": 0, "Superávit": 0 };
-            datosResiduos.forEach(p => {
-                if (p.residuos < -0.5) conteo["Brecha"]++;
-                else if (p.residuos > 0.5) conteo["Superávit"]++;
-                else conteo["Equilibrio"]++;
-            });
-
+            // Gráfico Circular
+            const c = { "Alerta": 0, "Normal": 0, "Bienestar": 0 };
+            datosRes.forEach(p => { if (p.residuos < -0.5) c["Alerta"]++; else if (p.residuos > 0.5) c["Bienestar"]++; else c["Normal"]++; });
             if (myPieChart) myPieChart.destroy();
             myPieChart = new Chart(document.getElementById('chartPie'), {
                 type: 'doughnut',
-                data: {
-                    labels: Object.keys(conteo),
-                    datasets: [{ data: Object.values(conteo), backgroundColor: ['#d73027', '#f7f7f7', '#4575b4'] }]
-                },
-                options: { plugins: { title: { display: true, text: 'Alertas SEM (REINFO)', color: 'white' }, legend: { labels: { color: 'white', font: { size: 10 } } } } }
+                data: { labels: Object.keys(c), datasets: [{ data: Object.values(c), backgroundColor: ['#d73027', '#f7f7f7', '#4575b4'] }] },
+                options: { plugins: { title: { display: true, text: 'Distribución SEM', color: 'white', font: {size: 11} }, legend: { position: 'bottom', labels: { color: 'white', font: {size: 9} } } } }
             });
 
             // Gráfico Scatter
-            const scatterData = featuresEnaho.map(f => ({
-                x: f.properties.perc_mineria,
-                y: f.properties.perc_informalidad
-            })).filter(d => d.x > 0);
-
+            const sData = featuresEnaho.map(f => ({ x: f.properties.perc_miner, y: f.properties.perc_infor })).filter(d => d.x > 0);
             if (myScatterChart) myScatterChart.destroy();
             myScatterChart = new Chart(document.getElementById('chartScatter'), {
                 type: 'scatter',
-                data: {
-                    datasets: [{
-                        label: 'C.P. Monitoreados',
-                        data: scatterData,
-                        backgroundColor: 'rgba(0, 210, 255, 0.6)'
-                    }]
-                },
+                data: { datasets: [{ label: 'Centros P.', data: sData, backgroundColor: 'rgba(0, 210, 255, 0.5)' }] },
                 options: {
-                    scales: {
-                        x: { title: { display: true, text: '% Minería', color: '#888' }, ticks: { color: '#888' } },
-                        y: { title: { display: true, text: '% Informalidad', color: '#888' }, ticks: { color: '#888' } }
-                    },
-                    plugins: { title: { display: true, text: 'Correlación ENAHO 2024', color: 'white' }, legend: { display: false } }
+                    scales: { x: { title: { display: true, text: '% Minería', color: '#888' } }, y: { title: { display: true, text: '% Informal', color: '#888' } } },
+                    plugins: { title: { display: true, text: 'Minería vs Informalidad', color: 'white', font: {size: 11} }, legend: { display: false } }
                 }
             });
         }
 
-        // Filtro por Departamento
         document.getElementById('select-departamento').addEventListener('change', function() {
             const dep = this.value;
-            if (dep === "todos") {
-                actualizarVisualizaciones(puntosOriginales, dataEnahoFeatures);
-                map.setView([-9.19, -75.01], 6);
-                return;
-            }
-
-            const filtradosRes = puntosOriginales.filter(p => p.DEPARTAMEN === dep);
-            const prefix = getUbigeoPrefix(dep);
-            const filtradosEnaho = dataEnahoFeatures.filter(f => (f.properties.ubigeo || "").startsWith(prefix));
-            
-            actualizarVisualizaciones(filtradosRes, filtradosEnaho);
-            
-            if(filtradosRes.length > 0) map.flyTo([filtradosRes[0].lat, filtradosRes[0].lon], 8);
+            const res = dep === "todos" ? puntosOriginales : puntosOriginales.filter(p => p.DEPARTAMEN === dep);
+            const pref = {"AMAZONAS":"01","ANCASH":"02","APURIMAC":"03","AREQUIPA":"04","AYACUCHO":"05","CAJAMARCA":"06","CALLAO":"07","CUSCO":"08","HUANCAVELICA":"09","HUANUCO":"10","ICA":"11","JUNIN":"12","LA LIBERTAD":"13","LAMBAYEQUE":"14","LIMA":"15","LORETO":"16","MADRE DE DIOS":"17","MOQUEGUA":"18","PASCO":"19","PIURA":"20","PUNO":"21","SAN MARTIN":"22","TACNA":"23","TUMBES":"24","UCAYALI":"25"}[dep];
+            const ena = dep === "todos" ? dataEnahoFeatures : dataEnahoFeatures.filter(f => (f.properties.ubigeo || "").startsWith(pref));
+            actualizarVisualizaciones(res, ena);
+            if(res.length > 0) map.flyTo([res[0].lat, res[0].lon], 8);
         });
-
-        function getUbigeoPrefix(depName) {
-            const deps = {"AMAZONAS":"01","ANCASH":"02","APURIMAC":"03","AREQUIPA":"04","AYACUCHO":"05","CAJAMARCA":"06","CALLAO":"07","CUSCO":"08","HUANCAVELICA":"09","HUANUCO":"10","ICA":"11","JUNIN":"12","LA LIBERTAD":"13","LAMBAYEQUE":"14","LIMA":"15","LORETO":"16","MADRE DE DIOS":"17","MOQUEGUA":"18","PASCO":"19","PIURA":"20","PUNO":"21","SAN MARTIN":"22","TACNA":"23","TUMBES":"24","UCAYALI":"25"};
-            return deps[depName] || "";
-        }
 
         cargarTodo();
     </script>
