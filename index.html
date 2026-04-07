@@ -3,22 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard ENAHO 2024 - Análisis de Vulnerabilidad</title>
+    <title>Dashboard ENAHO 2024 - Análisis de Fragilidad</title>
+    
+    <!-- Leaflet y Chart.js -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Librerías para análisis de KMZ/KML y Procesamiento Espacial -->
+    
+    <!-- Librerías de Análisis Espacial y Lectura de Archivos -->
+    <script src="https://unpkg.com/jszip@3.7.1/dist/jszip.min.js"></script>
     <script src="https://unpkg.com/@mapbox/togeojson"></script>
     <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+
     <style>
         body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; background: #0f0f0f; color: white; overflow: hidden; }
         
-        /* Panel Izquierdo */
         #panel-left { width: 320px; background: #181818; padding: 15px; box-sizing: border-box; overflow-y: auto; border-right: 1px solid #333; z-index: 10; }
-        
-        /* Mapa Central */
         #map { flex: 1; height: 100%; z-index: 1; }
-        
-        /* Panel Derecho */
         #panel-right { width: 300px; background: #181818; padding: 20px; box-sizing: border-box; overflow-y: auto; border-left: 1px solid #333; font-size: 0.85rem; z-index: 10; line-height: 1.5; }
 
         h2 { color: #00d2ff; font-size: 1rem; border-bottom: 1px solid #333; padding-bottom: 8px; margin-top: 0; }
@@ -34,28 +34,27 @@
         #loading { position: fixed; top: 15px; left: 50%; transform: translateX(-50%); background: #000; color: #00d2ff; padding: 8px 20px; border-radius: 20px; z-index: 2000; border: 1px solid #00d2ff; font-size: 0.8rem; display: none; }
         .chart-container { margin-top: 20px; background: #222; padding: 10px; border-radius: 6px; }
         
-        /* Estilos para el analizador de KML */
-        .filter-group { margin-bottom: 12px; }
-        #reporte-analisis { display:none; margin-top: 15px; padding: 10px; background: #2a2a2a; border-radius: 6px; font-size: 0.8rem; border-left: 4px solid #00d2ff; }
+        /* Estilos Analizador KML/KMZ */
+        #reporte-analisis { display:none; margin-top: 15px; padding: 12px; background: #1a2a33; border-radius: 6px; font-size: 0.8rem; border-left: 4px solid #00d2ff; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .upload-box { background: #222; padding: 12px; border-radius: 6px; border: 1px dashed #00d2ff; margin-bottom: 15px; }
     </style>
 </head>
 <body>
 
-    <div id="loading">Sincronizando con Neon...</div>
+    <div id="loading">Sincronizando con Neon & Render...</div>
 
-    <!-- PANEL IZQUIERDO: LEYENDA Y GRÁFICO -->
     <div id="panel-left">
         <h2>Indicadores Sociales</h2>
 
-        <!-- HERRAMIENTA DE CARGA KMZ/KML -->
-        <div class="filter-group" style="background: #222; padding: 10px; border-radius: 6px; border: 1px dashed #00d2ff;">
-            <label style="font-size: 0.75rem; color: #00d2ff; display: block; margin-bottom: 5px; letter-spacing: 1px;">ANÁLISIS ESPACIAL (KML)</label>
-            <input type="file" id="upload-kmz" accept=".kml" style="font-size: 0.7rem; width: 100%; color: #888;">
+        <!-- CARGADOR DE ARCHIVOS GEOGRÁFICOS -->
+        <div class="upload-box">
+            <label style="font-size: 0.7rem; color: #00d2ff; display: block; margin-bottom: 8px; letter-spacing: 1px; font-weight: bold;">SUBIR ÁREA (KML / KMZ)</label>
+            <input type="file" id="upload-file" accept=".kml,.kmz" style="font-size: 0.7rem; width: 100%; color: #aaa;">
         </div>
 
         <div id="reporte-analisis">
-            <strong style="color: #00d2ff;">Reporte de Intervención:</strong>
-            <div id="resultado-conteo" style="margin-top: 5px; color: #ccc; line-height: 1.4;"></div>
+            <strong style="color: #00d2ff; display: block; margin-bottom: 5px;">📊 Reporte de Intervención:</strong>
+            <div id="resultado-conteo" style="color: #eee; line-height: 1.5;"></div>
         </div>
         
         <div class="legend">
@@ -71,10 +70,8 @@
         </div>
     </div>
 
-    <!-- MAPA -->
     <div id="map"></div>
 
-    <!-- PANEL DERECHO: METODOLOGÍA -->
     <div id="panel-right">
         <h2>Ficha Metodológica</h2>
         <div class="method-text">
@@ -83,58 +80,50 @@
             <h3>Variables de Intensidad:</h3>
             <p>Se analizó la proporción de la PEA ocupada vinculada a la extracción minera y la tasa de informalidad local (basada en la desprotección de salud).</p>
 
-            <h3>Índice de Vulnerabilidad:</h3>
-            <p>Representa la fragilidad socio-económica de los centros poblados frente a economías extractivas informales. Los valores oscilan entre 0 y 100%.</p>
+            <h3>Fragilidad Socio-Minera:</h3>
+            <p>Mide la vulnerabilidad de los centros poblados frente a economías extractivas informales. Un valor alto indica fuerte dependencia y baja protección social.</p>
             
             <h3>Nivel de Confianza:</h3>
-            <p>Para garantizar la transparencia, los puntos con <b>borde negro</b> indican localidades donde la muestra es estadísticamente representativa (más de 15 hogares encuestados). Los puntos sin borde tienen un valor <b>referencial</b>, mostrando tendencias locales que deben ser validadas con estudios de mayor profundidad.</p>
+            <p>Los puntos con <b>borde negro</b> indican localidades con muestra estadísticamente representativa (n ≥ 15 hogares). Los puntos sin borde tienen valor <b>referencial</b>.</p>
 
-            <p><b>Tecnología:</b> Procesamiento vectorial con <b>Python</b> (Pandas, GeoPandas) y visualización geoespacial con Leaflet.js.</p>
+            <p><b>Tecnología:</b> Análisis espacial con <b>Turf.js</b>, Backend en <b>Neon/Render</b> y visualización con Leaflet.js.</p>
         </div>
         
-        <div class="footer-author">
-            Autor: Daniel G. Quispe Jiménez
-        </div>
+        <div class="footer-author">Autor: Daniel G. Quispe Jiménez</div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Inicializar Mapa
         const map = L.map('map').setView([-9.19, -75.01], 6);
         
         L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
-            maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3'], attribution: '© Google'
+            maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3'], attribution: '© Google Maps'
         }).addTo(map);
 
-        // Capas
         let puntosOriginales = [];
         let dataEnahoFeatures = [];
         let capaResiduos = L.layerGroup(); 
+        let capaAnalisisUsuario = L.layerGroup().addTo(map);
 
         function getEnahoColor(d) {
             return d > 70 ? '#7a0177' : d > 40 ? '#d73027' : d > 10 ? '#fee08b' : '#1a9850';
         }
 
         let capaEnaho = L.geoJSON(null, {
-            pointToLayer: function (feature, latlng) {
-                const props = feature.properties;
-                return L.circleMarker(latlng, {
-                    radius: 7,
-                    fillColor: getEnahoColor(props.indice_dep),
-                    color: props.confianza_ === 'Alta' ? '#000' : 'transparent',
-                    weight: 1.5,
-                    fillOpacity: 0.8
-                });
-            },
-            onEachFeature: function(feature, layer) {
-                const props = feature.properties;
+            pointToLayer: (feature, latlng) => L.circleMarker(latlng, {
+                radius: 7,
+                fillColor: getEnahoColor(feature.properties.indice_dep),
+                color: feature.properties.confianza_ === 'Alta' ? '#000' : 'transparent',
+                weight: 1.5, fillOpacity: 0.8
+            }),
+            onEachFeature: (feature, layer) => {
+                const p = feature.properties;
                 layer.bindPopup(`
                     <div style="color:#333; font-size:12px;">
-                        <b>${props.nomccpp || 'C.P.'}</b><br><hr>
-                        Minería: ${(props.perc_miner || 0).toFixed(1)}%<br>
-                        Informalidad: ${(props.perc_infor || 0).toFixed(1)}%<br>
-                        <b>Índice Dep: ${(props.indice_dep || 0).toFixed(1)}%</b><br>
-                        Confianza: <b>${props.confianza_ || 'Baja'}</b>
+                        <b>${p.nomccpp || 'C.P.'}</b><br><hr>
+                        Minería: ${(p.perc_miner || 0).toFixed(1)}%<br>
+                        Informalidad: ${(p.perc_infor || 0).toFixed(1)}%<br>
+                        <b>Fragilidad: ${(p.indice_dep || 0).toFixed(1)}%</b><br>
+                        Confianza: <b>${p.confianza_ || 'Baja'}</b>
                     </div>
                 `);
             }
@@ -142,7 +131,8 @@
 
         const overlays = { 
             "Indicadores ENAHO 2024": capaEnaho,
-            "Residuos SEM (Opcional)": capaResiduos 
+            "Residuos SEM (Opcional)": capaResiduos,
+            "Área de Análisis": capaAnalisisUsuario
         };
         L.control.layers(null, overlays, { collapsed: false }).addTo(map);
 
@@ -158,20 +148,19 @@
 
                 puntosOriginales = res1;
                 dataEnahoFeatures = res2.features;
-                capaEnaho.clearLayers().addData(res2);
+                capaEnaho.addData(res2);
                 
                 puntosOriginales.forEach(p => {
                     const color = p.residuos < -0.5 ? '#d73027' : p.residuos > 0.5 ? '#4575b4' : '#f7f7f7';
                     const marker = L.circleMarker([p.lat, p.lon], { 
                         radius: 4, fillColor: color, color: "#000", weight: 0.3, fillOpacity: 0.8 
                     });
-                    marker.bindPopup(`<b>Distrito: ${p.DISTRITO}</b><br>Residuo: ${p.residuos.toFixed(3)}`);
+                    marker.bindPopup(`<b>Distrito: ${p.DISTRITO}</b><br>Residuo SEM: ${p.residuos.toFixed(3)}`);
                     capaResiduos.addLayer(marker);
                 });
 
                 actualizarGrafico(dataEnahoFeatures);
-
-            } catch (e) { console.error("Error cargando datos:", e); }
+            } catch (e) { console.error("Error:", e); }
             document.getElementById('loading').style.display = 'none';
         }
 
@@ -191,7 +180,7 @@
                 data: {
                     labels: Object.keys(dist),
                     datasets: [{
-                        label: 'Centros Poblados',
+                        label: 'Localidades',
                         data: Object.values(dist),
                         backgroundColor: ['#7a0177', '#d73027', '#fee08b', '#1a9850']
                     }]
@@ -202,74 +191,84 @@
                         x: { grid: { display: false }, ticks: { color: '#888' } }
                     },
                     plugins: { 
-                        title: { display: true, text: 'Frecuencia de Centros Poblados por Fragilidad', color: 'white' },
+                        title: { display: true, text: 'Frecuencia de Localidades por Fragilidad', color: 'white' },
                         legend: { display: false }
                     }
                 }
             });
         }
 
-        // --- LÓGICA DE ANÁLISIS KMZ/KML ---
-        document.getElementById('upload-kmz').addEventListener('change', function(e) {
+        // --- PROCESAMIENTO HÍBRIDO KML / KMZ ---
+        document.getElementById('upload-file').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
 
             const reader = new FileReader();
-            reader.onload = function(event) {
+            const esKMZ = file.name.toLowerCase().endsWith('.kmz');
+
+            reader.onload = async function(event) {
+                let kmlContent;
                 try {
-                    const parser = new DOMParser();
-                    const xmlDoc = parser.parseFromString(event.target.result, "text/xml");
-                    const geojson = toGeoJSON.kml(xmlDoc); 
-                    
-                    // Dibujar en el mapa
-                    const capaUsuario = L.geoJSON(geojson, {
-                        style: { color: '#00d2ff', weight: 2, fillOpacity: 0.2 }
-                    }).addTo(map);
-                    map.fitBounds(capaUsuario.getBounds());
-
-                    // Análisis Espacial
-                    let puntosDentro = 0;
-                    let sumaFragilidad = 0;
-                    let nivelCritico = 0;
-
-                    dataEnahoFeatures.forEach(f => {
-                        const pt = turf.point(f.geometry.coordinates);
-                        const isInside = geojson.features.some(poly => {
-                            if (poly.geometry.type === 'Polygon' || poly.geometry.type === 'MultiPolygon') {
-                                return turf.booleanPointInPolygon(pt, poly);
-                            }
-                            return false;
-                        });
-
-                        if (isInside) {
-                            puntosDentro++;
-                            sumaFragilidad += f.properties.indice_dep;
-                            if (f.properties.indice_dep > 70) nivelCritico++;
-                        }
-                    });
-
-                    // Mostrar Reporte
-                    const reporteDiv = document.getElementById('reporte-analisis');
-                    const resultadoDiv = document.getElementById('resultado-conteo');
-                    reporteDiv.style.display = 'block';
-                    
-                    if (puntosDentro > 0) {
-                        resultadoDiv.innerHTML = `
-                            • Localidades detectadas: <b>${puntosDentro}</b><br>
-                            • Fragilidad promedio: <b>${(sumaFragilidad/puntosDentro).toFixed(1)}%</b><br>
-                            • En Alerta Crítica (>70%): <b style="color:#ff4d4d;">${nivelCritico}</b><br>
-                            <span style="font-size:0.65rem; color:#666;">Cruce espacial realizado con éxito.</span>
-                        `;
+                    if (esKMZ) {
+                        const zip = await JSZip.loadAsync(event.target.result);
+                        const kmlFile = Object.keys(zip.files).find(f => f.endsWith('.kml'));
+                        if (!kmlFile) throw new Error("No hay KML dentro del KMZ");
+                        kmlContent = await zip.file(kmlFile).async("string");
                     } else {
-                        resultadoDiv.innerHTML = "No se hallaron centros poblados en el área del KML.";
+                        kmlContent = event.target.result;
                     }
+                    ejecutarAnalisisEspacial(kmlContent);
                 } catch (err) {
-                    alert("Error procesando el archivo KML. Asegúrate de que sea un formato válido.");
-                    console.error(err);
+                    alert("Error al abrir el archivo: " + err.message);
                 }
             };
-            reader.readAsText(file);
+
+            if (esKMZ) reader.readAsArrayBuffer(file);
+            else reader.readAsText(file);
         });
+
+        function ejecutarAnalisisEspacial(kmlText) {
+            const parser = new DOMParser();
+            const xml = parser.parseFromString(kmlText, "text/xml");
+            const geojson = toGeoJSON.kml(xml);
+            
+            capaAnalisisUsuario.clearLayers();
+            const layer = L.geoJSON(geojson, { style: { color: '#00d2ff', weight: 2, fillOpacity: 0.2 } }).addTo(capaAnalisisUsuario);
+            map.fitBounds(layer.getBounds());
+
+            let conteo = 0, sumaFrag = 0, criticos = 0;
+
+            dataEnahoFeatures.forEach(f => {
+                const punto = turf.point(f.geometry.coordinates);
+                const estaDentro = geojson.features.some(feature => {
+                    if (feature.geometry.type.includes('Polygon')) {
+                        return turf.booleanPointInPolygon(punto, feature);
+                    }
+                    return false;
+                });
+
+                if (estaDentro) {
+                    conteo++;
+                    sumaFrag += f.properties.indice_dep;
+                    if (f.properties.indice_dep > 70) criticos++;
+                }
+            });
+
+            const reporte = document.getElementById('reporte-analisis');
+            const resultados = document.getElementById('resultado-conteo');
+            reporte.style.display = 'block';
+            
+            if (conteo > 0) {
+                resultados.innerHTML = `
+                    • Localidades en el área: <b>${conteo}</b><br>
+                    • Fragilidad Promedio: <b>${(sumaFrag/conteo).toFixed(1)}%</b><br>
+                    • En Alerta Crítica: <b style="color:#ff4d4d;">${criticos}</b><br>
+                    <span style="font-size:0.65rem; color:#888;">Análisis vectorial Turf.js finalizado.</span>
+                `;
+            } else {
+                resultados.innerHTML = "No se detectaron localidades dentro del polígono cargado.";
+            }
+        }
 
         cargarTodo();
     </script>
