@@ -6,6 +6,9 @@
     <title>Dashboard ENAHO 2024 - Análisis de Vulnerabilidad</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Librerías para análisis de KMZ/KML y Procesamiento Espacial -->
+    <script src="https://unpkg.com/@mapbox/togeojson"></script>
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
     <style>
         body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; background: #0f0f0f; color: white; overflow: hidden; }
         
@@ -30,6 +33,10 @@
         
         #loading { position: fixed; top: 15px; left: 50%; transform: translateX(-50%); background: #000; color: #00d2ff; padding: 8px 20px; border-radius: 20px; z-index: 2000; border: 1px solid #00d2ff; font-size: 0.8rem; display: none; }
         .chart-container { margin-top: 20px; background: #222; padding: 10px; border-radius: 6px; }
+        
+        /* Estilos para el analizador de KML */
+        .filter-group { margin-bottom: 12px; }
+        #reporte-analisis { display:none; margin-top: 15px; padding: 10px; background: #2a2a2a; border-radius: 6px; font-size: 0.8rem; border-left: 4px solid #00d2ff; }
     </style>
 </head>
 <body>
@@ -39,9 +46,20 @@
     <!-- PANEL IZQUIERDO: LEYENDA Y GRÁFICO -->
     <div id="panel-left">
         <h2>Indicadores Sociales</h2>
+
+        <!-- HERRAMIENTA DE CARGA KMZ/KML -->
+        <div class="filter-group" style="background: #222; padding: 10px; border-radius: 6px; border: 1px dashed #00d2ff;">
+            <label style="font-size: 0.75rem; color: #00d2ff; display: block; margin-bottom: 5px; letter-spacing: 1px;">ANÁLISIS ESPACIAL (KML)</label>
+            <input type="file" id="upload-kmz" accept=".kml" style="font-size: 0.7rem; width: 100%; color: #888;">
+        </div>
+
+        <div id="reporte-analisis">
+            <strong style="color: #00d2ff;">Reporte de Intervención:</strong>
+            <div id="resultado-conteo" style="margin-top: 5px; color: #ccc; line-height: 1.4;"></div>
+        </div>
         
         <div class="legend">
-            <strong>Simbología: Índice de Fragilidad Socio-Minera</strong>
+            <strong>Simbología: Fragilidad Socio-Minera</strong>
             <div class="legend-item"><div class="color-box" style="background: #7a0177;"></div> Crítico (> 70%)</div>
             <div class="legend-item"><div class="color-box" style="background: #d73027;"></div> Alto (40% - 70%)</div>
             <div class="legend-item"><div class="color-box" style="background: #fee08b;"></div> Medio (10% - 40%)</div>
@@ -67,6 +85,7 @@
 
             <h3>Índice de Vulnerabilidad:</h3>
             <p>Representa la fragilidad socio-económica de los centros poblados frente a economías extractivas informales. Los valores oscilan entre 0 y 100%.</p>
+            
             <h3>Nivel de Confianza:</h3>
             <p>Para garantizar la transparencia, los puntos con <b>borde negro</b> indican localidades donde la muestra es estadísticamente representativa (más de 15 hogares encuestados). Los puntos sin borde tienen un valor <b>referencial</b>, mostrando tendencias locales que deben ser validadas con estudios de mayor profundidad.</p>
 
@@ -90,8 +109,6 @@
         // Capas
         let puntosOriginales = [];
         let dataEnahoFeatures = [];
-        
-        // La capa de residuos se crea pero NO se añade al mapa con .addTo(map) al inicio
         let capaResiduos = L.layerGroup(); 
 
         function getEnahoColor(d) {
@@ -123,7 +140,6 @@
             }
         }).addTo(map);
 
-        // Control de Capas (Residuos aparece apagado por defecto aquí)
         const overlays = { 
             "Indicadores ENAHO 2024": capaEnaho,
             "Residuos SEM (Opcional)": capaResiduos 
@@ -135,7 +151,6 @@
         async function cargarTodo() {
             document.getElementById('loading').style.display = 'block';
             try {
-                // Carga paralela de ambas APIs
                 const [res1, res2] = await Promise.all([
                     fetch('https://reinfo-api-1.onrender.com/puntos-reinfo').then(r => r.json()),
                     fetch('https://reinfo-api-1.onrender.com/capa-enaho').then(r => r.json())
@@ -143,11 +158,8 @@
 
                 puntosOriginales = res1;
                 dataEnahoFeatures = res2.features;
-                
-                // Cargar datos en el mapa
                 capaEnaho.clearLayers().addData(res2);
                 
-                // Preparar la capa de residuos (aunque esté apagada visualmente)
                 puntosOriginales.forEach(p => {
                     const color = p.residuos < -0.5 ? '#d73027' : p.residuos > 0.5 ? '#4575b4' : '#f7f7f7';
                     const marker = L.circleMarker([p.lat, p.lon], { 
@@ -165,7 +177,6 @@
 
         function actualizarGrafico(features) {
             const dist = { "Crítico": 0, "Alto": 0, "Medio": 0, "Bajo": 0 };
-            
             features.forEach(f => {
                 const val = f.properties.indice_dep;
                 if (val > 70) dist["Crítico"]++;
@@ -197,6 +208,68 @@
                 }
             });
         }
+
+        // --- LÓGICA DE ANÁLISIS KMZ/KML ---
+        document.getElementById('upload-kmz').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(event.target.result, "text/xml");
+                    const geojson = toGeoJSON.kml(xmlDoc); 
+                    
+                    // Dibujar en el mapa
+                    const capaUsuario = L.geoJSON(geojson, {
+                        style: { color: '#00d2ff', weight: 2, fillOpacity: 0.2 }
+                    }).addTo(map);
+                    map.fitBounds(capaUsuario.getBounds());
+
+                    // Análisis Espacial
+                    let puntosDentro = 0;
+                    let sumaFragilidad = 0;
+                    let nivelCritico = 0;
+
+                    dataEnahoFeatures.forEach(f => {
+                        const pt = turf.point(f.geometry.coordinates);
+                        const isInside = geojson.features.some(poly => {
+                            if (poly.geometry.type === 'Polygon' || poly.geometry.type === 'MultiPolygon') {
+                                return turf.booleanPointInPolygon(pt, poly);
+                            }
+                            return false;
+                        });
+
+                        if (isInside) {
+                            puntosDentro++;
+                            sumaFragilidad += f.properties.indice_dep;
+                            if (f.properties.indice_dep > 70) nivelCritico++;
+                        }
+                    });
+
+                    // Mostrar Reporte
+                    const reporteDiv = document.getElementById('reporte-analisis');
+                    const resultadoDiv = document.getElementById('resultado-conteo');
+                    reporteDiv.style.display = 'block';
+                    
+                    if (puntosDentro > 0) {
+                        resultadoDiv.innerHTML = `
+                            • Localidades detectadas: <b>${puntosDentro}</b><br>
+                            • Fragilidad promedio: <b>${(sumaFragilidad/puntosDentro).toFixed(1)}%</b><br>
+                            • En Alerta Crítica (>70%): <b style="color:#ff4d4d;">${nivelCritico}</b><br>
+                            <span style="font-size:0.65rem; color:#666;">Cruce espacial realizado con éxito.</span>
+                        `;
+                    } else {
+                        resultadoDiv.innerHTML = "No se hallaron centros poblados en el área del KML.";
+                    }
+                } catch (err) {
+                    alert("Error procesando el archivo KML. Asegúrate de que sea un formato válido.");
+                    console.error(err);
+                }
+            };
+            reader.readAsText(file);
+        });
 
         cargarTodo();
     </script>
