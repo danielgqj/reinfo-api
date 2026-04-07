@@ -5,272 +5,164 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard ENAHO 2024 - Análisis de Fragilidad</title>
     
-    <!-- Leaflet y Chart.js -->
+    <!-- Librerías base del Mapa (Leaflet) - FUNDAMENTAL PARA QUE NO SE VEA NEGRO -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Gráficos -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
-    <!-- Librerías de Análisis Espacial y Lectura de Archivos -->
+    <!-- Análisis Espacial y Archivos (KMZ/KML) -->
     <script src="https://unpkg.com/jszip@3.7.1/dist/jszip.min.js"></script>
     <script src="https://unpkg.com/@mapbox/togeojson"></script>
     <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
 
     <style>
         body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; background: #0f0f0f; color: white; overflow: hidden; }
-        
         #panel-left { width: 320px; background: #181818; padding: 15px; box-sizing: border-box; overflow-y: auto; border-right: 1px solid #333; z-index: 10; }
-        #map { flex: 1; height: 100%; z-index: 1; }
+        #map { flex: 1; height: 100%; background: #111; } /* Fondo oscuro mientras carga */
         #panel-right { width: 300px; background: #181818; padding: 20px; box-sizing: border-box; overflow-y: auto; border-left: 1px solid #333; font-size: 0.85rem; z-index: 10; line-height: 1.5; }
-
         h2 { color: #00d2ff; font-size: 1rem; border-bottom: 1px solid #333; padding-bottom: 8px; margin-top: 0; }
         h3 { color: #00d2ff; font-size: 0.9rem; margin-top: 15px; border-left: 3px solid #00d2ff; padding-left: 8px; }
-        
         .legend { background: #222; padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 0.75rem; border: 1px solid #333; }
         .legend-item { display: flex; align-items: center; margin-bottom: 5px; }
         .color-box { width: 12px; height: 12px; margin-right: 8px; border-radius: 2px; }
-        
-        .method-text { color: #bbb; text-align: justify; }
         .footer-author { margin-top: 30px; padding-top: 15px; border-top: 1px solid #333; font-size: 0.8rem; color: #666; text-align: center; font-style: italic; }
-        
-        #loading { position: fixed; top: 15px; left: 50%; transform: translateX(-50%); background: #000; color: #00d2ff; padding: 8px 20px; border-radius: 20px; z-index: 2000; border: 1px solid #00d2ff; font-size: 0.8rem; display: none; }
-        .chart-container { margin-top: 20px; background: #222; padding: 10px; border-radius: 6px; }
-        
-        /* Estilos Analizador KML/KMZ */
-        #reporte-analisis { display:none; margin-top: 15px; padding: 12px; background: #1a2a33; border-radius: 6px; font-size: 0.8rem; border-left: 4px solid #00d2ff; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        #loading { position: fixed; top: 15px; left: 50%; transform: translateX(-50%); background: #000; color: #00d2ff; padding: 8px 20px; border-radius: 20px; z-index: 2000; border: 1px solid #00d2ff; font-size: 0.8rem; }
         .upload-box { background: #222; padding: 12px; border-radius: 6px; border: 1px dashed #00d2ff; margin-bottom: 15px; }
+        #reporte-analisis { display:none; margin-top: 15px; padding: 12px; background: #1a2a33; border-radius: 6px; border-left: 4px solid #00d2ff; }
+        .chart-container { margin-top: 20px; height: 200px; }
     </style>
 </head>
 <body>
 
-    <div id="loading">Sincronizando con Neon & Render...</div>
+    <div id="loading">Sincronizando datos...</div>
 
     <div id="panel-left">
         <h2>Indicadores Sociales</h2>
-
-        <!-- CARGADOR DE ARCHIVOS GEOGRÁFICOS -->
         <div class="upload-box">
-            <label style="font-size: 0.7rem; color: #00d2ff; display: block; margin-bottom: 8px; letter-spacing: 1px; font-weight: bold;">SUBIR ÁREA (KML / KMZ)</label>
+            <label style="font-size: 0.7rem; color: #00d2ff; display: block; margin-bottom: 8px;">SUBIR ÁREA (KML / KMZ)</label>
             <input type="file" id="upload-file" accept=".kml,.kmz" style="font-size: 0.7rem; width: 100%; color: #aaa;">
         </div>
-
         <div id="reporte-analisis">
-            <strong style="color: #00d2ff; display: block; margin-bottom: 5px;">📊 Reporte de Intervención:</strong>
-            <div id="resultado-conteo" style="color: #eee; line-height: 1.5;"></div>
+            <strong style="color: #00d2ff;">Reporte de Intervención:</strong>
+            <div id="resultado-conteo" style="color: #eee; font-size: 0.75rem; margin-top:5px;"></div>
         </div>
-        
         <div class="legend">
-            <strong>Simbología: Fragilidad Socio-Minera</strong>
+            <strong>Fragilidad Socio-Minera</strong>
             <div class="legend-item"><div class="color-box" style="background: #7a0177;"></div> Crítico (> 70%)</div>
             <div class="legend-item"><div class="color-box" style="background: #d73027;"></div> Alto (40% - 70%)</div>
             <div class="legend-item"><div class="color-box" style="background: #fee08b;"></div> Medio (10% - 40%)</div>
             <div class="legend-item"><div class="color-box" style="background: #1a9850;"></div> Bajo (< 10%)</div>
         </div>
-
-        <div class="chart-container">
-            <canvas id="chartBar"></canvas>
-        </div>
+        <div class="chart-container"><canvas id="chartBar"></canvas></div>
     </div>
 
     <div id="map"></div>
 
     <div id="panel-right">
         <h2>Ficha Metodológica</h2>
-        <div class="method-text">
-            <p><b>Fuente:</b> ENAHO 2024 (INEI). Procesamiento de microdatos de los módulos de Vivienda, Empleo y Salud.</p>
-            
-            <h3>Variables de Intensidad:</h3>
-            <p>Se analizó la proporción de la PEA ocupada vinculada a la extracción minera y la tasa de informalidad local (basada en la desprotección de salud).</p>
-
-            <h3>Fragilidad Socio-Minera:</h3>
-            <p>Mide la vulnerabilidad de los centros poblados frente a economías extractivas informales. Un valor alto indica fuerte dependencia y baja protección social.</p>
-            
-            <h3>Nivel de Confianza:</h3>
-            <p>Los puntos con <b>borde negro</b> indican localidades con muestra estadísticamente representativa (n ≥ 15 hogares). Los puntos sin borde tienen valor <b>referencial</b>.</p>
-
-            <p><b>Tecnología:</b> Análisis espacial con <b>Turf.js</b>, Backend en <b>Neon/Render</b> y visualización con Leaflet.js.</p>
+        <div style="color:#bbb; text-align:justify;">
+            <p><b>Fuente:</b> ENAHO 2024 (INEI). Procesamiento de microdatos de Vivienda, Empleo y Salud.</p>
+            <h3>Variables:</h3>
+            <p>Se analizó la PEA en minería y la tasa de informalidad local (basada en carencia de seguro de salud)[cite: 1].</p>
+            <h3>Fragilidad:</h3>
+            <p>Mide la vulnerabilidad ante economías extractivas informales. Un valor alto indica fuerte dependencia y baja protección social[cite: 1].</p>
+            <h3>Confianza:</h3>
+            <p>Puntos con <b>borde negro</b>: muestra representativa (n ≥ 15 hogares). Sin borde: valor <b>referencial</b>[cite: 1].</p>
         </div>
-        
         <div class="footer-author">Autor: Daniel G. Quispe Jiménez</div>
     </div>
 
     <script>
+        // Inicializar Mapa
         const map = L.map('map').setView([-9.19, -75.01], 6);
-        
         L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
             maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3'], attribution: '© Google Maps'
         }).addTo(map);
 
-        let puntosOriginales = [];
         let dataEnahoFeatures = [];
-        let capaResiduos = L.layerGroup(); 
-        let capaAnalisisUsuario = L.layerGroup().addTo(map);
-
-        function getEnahoColor(d) {
-            return d > 70 ? '#7a0177' : d > 40 ? '#d73027' : d > 10 ? '#fee08b' : '#1a9850';
-        }
-
         let capaEnaho = L.geoJSON(null, {
             pointToLayer: (feature, latlng) => L.circleMarker(latlng, {
                 radius: 7,
-                fillColor: getEnahoColor(feature.properties.indice_dep),
+                fillColor: feature.properties.indice_dep > 70 ? '#7a0177' : feature.properties.indice_dep > 40 ? '#d73027' : feature.properties.indice_dep > 10 ? '#fee08b' : '#1a9850',
                 color: feature.properties.confianza_ === 'Alta' ? '#000' : 'transparent',
                 weight: 1.5, fillOpacity: 0.8
             }),
             onEachFeature: (feature, layer) => {
-                const p = feature.properties;
-                layer.bindPopup(`
-                    <div style="color:#333; font-size:12px;">
-                        <b>${p.nomccpp || 'C.P.'}</b><br><hr>
-                        Minería: ${(p.perc_miner || 0).toFixed(1)}%<br>
-                        Informalidad: ${(p.perc_infor || 0).toFixed(1)}%<br>
-                        <b>Fragilidad: ${(p.indice_dep || 0).toFixed(1)}%</b><br>
-                        Confianza: <b>${p.confianza_ || 'Baja'}</b>
-                    </div>
-                `);
+                layer.bindPopup(`<b>${feature.properties.nomccpp}</b><br>Fragilidad: ${feature.properties.indice_dep.toFixed(1)}%`);
             }
         }).addTo(map);
 
-        const overlays = { 
-            "Indicadores ENAHO 2024": capaEnaho,
-            "Residuos SEM (Opcional)": capaResiduos,
-            "Área de Análisis": capaAnalisisUsuario
-        };
-        L.control.layers(null, overlays, { collapsed: false }).addTo(map);
+        let capaAnalisis = L.geoJSON(null, { style: { color: '#00d2ff', weight: 2, fillOpacity: 0.2 } }).addTo(map);
 
-        let myBarChart;
-
-        async function cargarTodo() {
-            document.getElementById('loading').style.display = 'block';
+        async function cargarDatos() {
             try {
-                const [res1, res2] = await Promise.all([
-                    fetch('https://reinfo-api-1.onrender.com/puntos-reinfo').then(r => r.json()),
-                    fetch('https://reinfo-api-1.onrender.com/capa-enaho').then(r => r.json())
-                ]);
-
-                puntosOriginales = res1;
-                dataEnahoFeatures = res2.features;
-                capaEnaho.addData(res2);
-                
-                puntosOriginales.forEach(p => {
-                    const color = p.residuos < -0.5 ? '#d73027' : p.residuos > 0.5 ? '#4575b4' : '#f7f7f7';
-                    const marker = L.circleMarker([p.lat, p.lon], { 
-                        radius: 4, fillColor: color, color: "#000", weight: 0.3, fillOpacity: 0.8 
-                    });
-                    marker.bindPopup(`<b>Distrito: ${p.DISTRITO}</b><br>Residuo SEM: ${p.residuos.toFixed(3)}`);
-                    capaResiduos.addLayer(marker);
-                });
-
-                actualizarGrafico(dataEnahoFeatures);
-            } catch (e) { console.error("Error:", e); }
-            document.getElementById('loading').style.display = 'none';
+                const response = await fetch('https://reinfo-api-1.onrender.com/capa-enaho');
+                const data = await response.json();
+                dataEnahoFeatures = data.features;
+                capaEnaho.addData(data);
+                actualizarGrafico(data.features);
+                document.getElementById('loading').style.display = 'none';
+            } catch (e) {
+                console.error("Error cargando datos", e);
+                document.getElementById('loading').innerText = "Error al conectar con la API";
+            }
         }
 
         function actualizarGrafico(features) {
             const dist = { "Crítico": 0, "Alto": 0, "Medio": 0, "Bajo": 0 };
             features.forEach(f => {
-                const val = f.properties.indice_dep;
-                if (val > 70) dist["Crítico"]++;
-                else if (val > 40) dist["Alto"]++;
-                else if (val > 10) dist["Medio"]++;
-                else dist["Bajo"]++;
+                const v = f.properties.indice_dep;
+                if (v > 70) dist["Crítico"]++; else if (v > 40) dist["Alto"]++; else if (v > 10) dist["Medio"]++; else dist["Bajo"]++;
             });
-
-            if (myBarChart) myBarChart.destroy();
-            myBarChart = new Chart(document.getElementById('chartBar'), {
+            new Chart(document.getElementById('chartBar'), {
                 type: 'bar',
                 data: {
                     labels: Object.keys(dist),
-                    datasets: [{
-                        label: 'Localidades',
-                        data: Object.values(dist),
-                        backgroundColor: ['#7a0177', '#d73027', '#fee08b', '#1a9850']
-                    }]
+                    datasets: [{ data: Object.values(dist), backgroundColor: ['#7a0177', '#d73027', '#fee08b', '#1a9850'] }]
                 },
-                options: {
-                    scales: { 
-                        y: { beginAtZero: true, grid: { color: '#333' }, ticks: { color: '#888' } },
-                        x: { grid: { display: false }, ticks: { color: '#888' } }
-                    },
-                    plugins: { 
-                        title: { display: true, text: 'Frecuencia de Localidades por Fragilidad', color: 'white' },
-                        legend: { display: false }
-                    }
-                }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
             });
         }
 
-        // --- PROCESAMIENTO HÍBRIDO KML / KMZ ---
-        document.getElementById('upload-file').addEventListener('change', function(e) {
+        // Manejo de KML/KMZ
+        document.getElementById('upload-file').addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
-            const esKMZ = file.name.toLowerCase().endsWith('.kmz');
+            const isKMZ = file.name.endsWith('.kmz');
 
-            reader.onload = async function(event) {
-                let kmlContent;
-                try {
-                    if (esKMZ) {
-                        const zip = await JSZip.loadAsync(event.target.result);
-                        const kmlFile = Object.keys(zip.files).find(f => f.endsWith('.kml'));
-                        if (!kmlFile) throw new Error("No hay KML dentro del KMZ");
-                        kmlContent = await zip.file(kmlFile).async("string");
-                    } else {
-                        kmlContent = event.target.result;
-                    }
-                    ejecutarAnalisisEspacial(kmlContent);
-                } catch (err) {
-                    alert("Error al abrir el archivo: " + err.message);
+            reader.onload = async (event) => {
+                let kml;
+                if (isKMZ) {
+                    const zip = await JSZip.loadAsync(event.target.result);
+                    const kmlFile = Object.keys(zip.files).find(f => f.endsWith('.kml'));
+                    kml = await zip.file(kmlFile).async("string");
+                } else {
+                    kml = event.target.result;
                 }
-            };
+                
+                const geojson = toGeoJSON.kml(new DOMParser().parseFromString(kml, "text/xml"));
+                capaAnalisis.clearLayers().addData(geojson);
+                map.fitBounds(capaAnalisis.getBounds());
 
-            if (esKMZ) reader.readAsArrayBuffer(file);
-            else reader.readAsText(file);
-        });
-
-        function ejecutarAnalisisEspacial(kmlText) {
-            const parser = new DOMParser();
-            const xml = parser.parseFromString(kmlText, "text/xml");
-            const geojson = toGeoJSON.kml(xml);
-            
-            capaAnalisisUsuario.clearLayers();
-            const layer = L.geoJSON(geojson, { style: { color: '#00d2ff', weight: 2, fillOpacity: 0.2 } }).addTo(capaAnalisisUsuario);
-            map.fitBounds(layer.getBounds());
-
-            let conteo = 0, sumaFrag = 0, criticos = 0;
-
-            dataEnahoFeatures.forEach(f => {
-                const punto = turf.point(f.geometry.coordinates);
-                const estaDentro = geojson.features.some(feature => {
-                    if (feature.geometry.type.includes('Polygon')) {
-                        return turf.booleanPointInPolygon(punto, feature);
+                let count = 0, sum = 0;
+                dataEnahoFeatures.forEach(f => {
+                    const pt = turf.point(f.geometry.coordinates);
+                    if (geojson.features.some(poly => poly.geometry.type.includes('Polygon') && turf.booleanPointInPolygon(pt, poly))) {
+                        count++; sum += f.properties.indice_dep;
                     }
-                    return false;
                 });
 
-                if (estaDentro) {
-                    conteo++;
-                    sumaFrag += f.properties.indice_dep;
-                    if (f.properties.indice_dep > 70) criticos++;
-                }
-            });
+                document.getElementById('reporte-analisis').style.display = 'block';
+                document.getElementById('resultado-conteo').innerHTML = count > 0 ? 
+                    `Localidades: ${count}<br>Fragilidad Promedio: ${(sum/count).toFixed(1)}%` : "Sin puntos en el área";
+            };
+            if (isKMZ) reader.readAsArrayBuffer(file); else reader.readAsText(file);
+        });
 
-            const reporte = document.getElementById('reporte-analisis');
-            const resultados = document.getElementById('resultado-conteo');
-            reporte.style.display = 'block';
-            
-            if (conteo > 0) {
-                resultados.innerHTML = `
-                    • Localidades en el área: <b>${conteo}</b><br>
-                    • Fragilidad Promedio: <b>${(sumaFrag/conteo).toFixed(1)}%</b><br>
-                    • En Alerta Crítica: <b style="color:#ff4d4d;">${criticos}</b><br>
-                    <span style="font-size:0.65rem; color:#888;">Análisis vectorial Turf.js finalizado.</span>
-                `;
-            } else {
-                resultados.innerHTML = "No se detectaron localidades dentro del polígono cargado.";
-            }
-        }
-
-        cargarTodo();
+        cargarDatos();
     </script>
 </body>
 </html>
