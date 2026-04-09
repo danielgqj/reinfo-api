@@ -3,16 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard 3D ENAHO 2024 - Análisis de Fragilidad</title>
+    <title>Dashboard 3D Real - ENAHO 2024</title>
     
-    <!-- MapLibre GL JS (Reemplaza a Leaflet para soporte 3D) -->
+    <!-- MapLibre GL JS -->
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     
-    <!-- Gráficos -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <!-- Análisis Espacial y Archivos (KMZ/KML) -->
     <script src="https://unpkg.com/jszip@3.7.1/dist/jszip.min.js"></script>
     <script src="https://unpkg.com/@mapbox/togeojson"></script>
     <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
@@ -20,33 +17,30 @@
     <style>
         body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; background: #0f0f0f; color: white; overflow: hidden; }
         #panel-left { width: 320px; background: #181818; padding: 15px; box-sizing: border-box; overflow-y: auto; border-right: 1px solid #333; z-index: 10; }
-        #map { flex: 1; height: 100%; background: #111; } 
+        #map { flex: 1; height: 100%; background: #000; } 
         #panel-right { width: 300px; background: #181818; padding: 20px; box-sizing: border-box; overflow-y: auto; border-left: 1px solid #333; font-size: 0.85rem; z-index: 10; line-height: 1.5; }
         h2 { color: #00d2ff; font-size: 1rem; border-bottom: 1px solid #333; padding-bottom: 8px; margin-top: 0; }
-        h3 { color: #00d2ff; font-size: 0.9rem; margin-top: 15px; border-left: 3px solid #00d2ff; padding-left: 8px; }
+        .upload-box { background: #222; padding: 12px; border-radius: 6px; border: 1px dashed #00d2ff; margin-bottom: 15px; }
+        #reporte-analisis { display:none; margin-top: 15px; padding: 12px; background: #1a2a33; border-radius: 6px; border-left: 4px solid #00d2ff; }
         .legend { background: #222; padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 0.75rem; border: 1px solid #333; }
         .legend-item { display: flex; align-items: center; margin-bottom: 5px; }
         .color-box { width: 12px; height: 12px; margin-right: 8px; border-radius: 2px; }
-        .footer-author { margin-top: 30px; padding-top: 15px; border-top: 1px solid #333; font-size: 0.8rem; color: #666; text-align: center; font-style: italic; }
         #loading { position: fixed; top: 15px; left: 50%; transform: translateX(-50%); background: #000; color: #00d2ff; padding: 8px 20px; border-radius: 20px; z-index: 2000; border: 1px solid #00d2ff; font-size: 0.8rem; }
-        .upload-box { background: #222; padding: 12px; border-radius: 6px; border: 1px dashed #00d2ff; margin-bottom: 15px; }
-        #reporte-analisis { display:none; margin-top: 15px; padding: 12px; background: #1a2a33; border-radius: 6px; border-left: 4px solid #00d2ff; }
-        .chart-container { margin-top: 20px; height: 200px; }
-        .map-hint { font-size: 0.65rem; color: #00d2ff; text-align: center; margin-top: 5px; font-style: italic; }
+        .instruccion { font-size: 0.65rem; color: #00d2ff; text-align: center; margin-top: 10px; font-style: italic; }
     </style>
 </head>
 <body>
 
-    <div id="loading">Sincronizando datos 3D...</div>
+    <div id="loading">Cargando relieve y datos (30s)...</div>
 
     <div id="panel-left">
         <h2>Indicadores Sociales</h2>
         <div class="upload-box">
-            <label style="font-size: 0.7rem; color: #00d2ff; display: block; margin-bottom: 8px;">ANALIZAR KMZ / KML EN 3D</label>
+            <label style="font-size: 0.7rem; color: #00d2ff; display: block; margin-bottom: 8px;">SUBIR KMZ / KML (Análisis 3D)</label>
             <input type="file" id="upload-file" accept=".kml,.kmz" style="font-size: 0.7rem; width: 100%; color: #aaa;">
         </div>
         <div id="reporte-analisis">
-            <strong style="color: #00d2ff;">Reporte de Intervención:</strong>
+            <strong style="color: #00d2ff;">Reporte:</strong>
             <div id="resultado-conteo" style="color: #eee; font-size: 0.75rem; margin-top:5px;"></div>
         </div>
         <div class="legend">
@@ -56,29 +50,27 @@
             <div class="legend-item"><div class="color-box" style="background: #fee08b;"></div> Medio (10% - 40%)</div>
             <div class="legend-item"><div class="color-box" style="background: #1a9850;"></div> Bajo (< 10%)</div>
         </div>
-        <div class="chart-container"><canvas id="chartBar"></canvas></div>
-        <div class="map-hint">Usa Clic Derecho + Arrastrar para inclinar el terreno</div>
+        <div style="height: 180px; margin-top:20px;"><canvas id="chartBar"></canvas></div>
+        <div class="instruccion">Ctrl + Arrastrar para ver las montañas</div>
     </div>
 
     <div id="map"></div>
 
     <div id="panel-right">
-        <h2>Ficha Metodológica 3D</h2>
-        <div style="color:#bbb; text-align:justify;">
-            <p><b>Visualización:</b> Motor WebGL con soporte de relieve para análisis orográfico de los Andes.</p>
+        <h2>Ficha Metodológica</h2>
+        <div style="color:#bbb; font-size: 0.8rem;">
+            <p><b>Relieve:</b> Digital Elevation Model (DEM) con exageración 2.0x para identificar valles mineros.</p>
             <p><b>Fuente:</b> ENAHO 2024 (INEI). Procesamiento de microdatos de Vivienda, Empleo y Salud.</p>
-            <h3>Variables:</h3>
-            <p>Se analizó la PEA en minería y la tasa de informalidad local.</p>
             <h3>Fragilidad:</h3>
             <p>Mide la vulnerabilidad ante economías extractivas informales.</p>
-            <h3>Confianza:</h3>
-            <p>Borde negro indica representatividad estadística (n ≥ 15).</p>
         </div>
-        <div class="footer-author">Autor: Daniel G. Quispe Jiménez</div>
+        <div style="margin-top: 30px; font-size: 0.7rem; color: #666; text-align: center; border-top: 1px solid #333; padding-top: 10px;">
+            Autor: Daniel G. Quispe Jiménez
+        </div>
     </div>
 
     <script>
-        // --- CONFIGURACIÓN MAPLIBRE 3D ---
+        // Configuración de MapLibre con TERRENO REAL
         const map = new maplibregl.Map({
             container: 'map',
             style: {
@@ -87,38 +79,46 @@
                     'google-satellite': {
                         type: 'raster',
                         tiles: ['https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'],
-                        tileSize: 256,
-                        attribution: '© Google Maps'
+                        tileSize: 256
                     },
                     'terrain-source': {
                         type: 'raster-dem',
-                        url: 'https://demotiles.maplibre.org/terrain-tiles/tiles.json', // DEM Global
-                        tileSize: 256
+                        // Fuente de relieve optimizada
+                        tiles: ['https://tiles.stadiamaps.com/data/terrain-rgb/{z}/{x}/{y}.png'],
+                        tileSize: 256,
+                        encoding: 'mapbox'
                     }
                 },
                 layers: [{
-                    id: 'satellite-layer',
+                    id: 'satellite',
                     type: 'raster',
                     source: 'google-satellite'
                 }],
                 terrain: {
                     source: 'terrain-source',
-                    exaggeration: 1.5 // Exageración del relieve para notar los valles
+                    exaggeration: 2.0 // Aumentamos la exageración para que se note más el relieve
                 }
             },
             center: [-75.01, -9.19],
             zoom: 6,
-            pitch: 45, // Inclinación inicial
+            pitch: 60, // Mayor inclinación inicial para apreciar el relieve
             bearing: 0,
-            antialias: true
+            maxPitch: 85
         });
 
-        // Controles de navegación
         map.addControl(new maplibregl.NavigationControl());
 
         let dataEnahoFeatures = [];
 
-        map.on('load', () => {
+        map.on('load', async () => {
+            // Capa de niebla/atmósfera para mejorar el efecto 3D en el horizonte
+            map.setFog({
+                'range': [0.5, 10],
+                'color': '#242424',
+                'high-color': '#000000',
+                'space-color': '#000000'
+            });
+
             cargarDatos();
         });
 
@@ -128,13 +128,8 @@
                 const data = await response.json();
                 dataEnahoFeatures = data.features;
 
-                // Añadir los puntos como fuente GeoJSON
-                map.addSource('enaho-pts', {
-                    type: 'geojson',
-                    data: data
-                });
+                map.addSource('enaho-pts', { type: 'geojson', data: data });
 
-                // Capa de Círculos 3D
                 map.addLayer({
                     id: 'enaho-layer',
                     type: 'circle',
@@ -146,12 +141,10 @@
                             '#1a9850', 10, '#fee08b', 40, '#d73027', 70, '#7a0177'
                         ],
                         'circle-stroke-width': ['match', ['get', 'confianza_'], 'Alta', 1.5, 0],
-                        'circle-stroke-color': '#000',
-                        'circle-opacity': 0.9
+                        'circle-stroke-color': '#000'
                     }
                 });
 
-                // Popup al hacer click
                 map.on('click', 'enaho-layer', (e) => {
                     const props = e.features[0].properties;
                     new maplibregl.Popup()
@@ -160,15 +153,11 @@
                         .addTo(map);
                 });
 
-                // Cambiar cursor al pasar por puntos
-                map.on('mouseenter', 'enaho-layer', () => map.getCanvas().style.cursor = 'pointer');
-                map.on('mouseleave', 'enaho-layer', () => map.getCanvas().style.cursor = '');
-
                 actualizarGrafico(data.features);
                 document.getElementById('loading').style.display = 'none';
             } catch (e) {
-                console.error("Error cargando datos", e);
-                document.getElementById('loading').innerText = "Error al conectar con la API";
+                console.error(e);
+                document.getElementById('loading').innerText = "Error API";
             }
         }
 
@@ -193,7 +182,7 @@
             });
         }
 
-        // --- MANEJO DE KML/KMZ EN 3D ---
+        // --- KMZ / KML ANALYSIS ---
         document.getElementById('upload-file').addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
@@ -212,11 +201,9 @@
                 
                 const geojson = toGeoJSON.kml(new DOMParser().parseFromString(kml, "text/xml"));
                 
-                // Limpiar capa anterior si existe
                 if (map.getLayer('capa-analisis-fill')) map.removeLayer('capa-analisis-fill');
                 if (map.getSource('capa-analisis')) map.removeSource('capa-analisis');
 
-                // Añadir nueva área de análisis
                 map.addSource('capa-analisis', { type: 'geojson', data: geojson });
                 map.addLayer({
                     id: 'capa-analisis-fill',
@@ -225,11 +212,9 @@
                     paint: { 'fill-color': '#00d2ff', 'fill-opacity': 0.3 }
                 });
 
-                // Zoom al área cargada
                 const bbox = turf.bbox(geojson);
                 map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding: 50 });
 
-                // Análisis espacial con Turf
                 let count = 0, sum = 0;
                 dataEnahoFeatures.forEach(f => {
                     const pt = turf.point(f.geometry.coordinates);
