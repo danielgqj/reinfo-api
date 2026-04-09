@@ -5,79 +5,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GeoPortal 3D Real - ENAHO 2024</title>
     
-    <!-- MapLibre GL JS - Motor 3D de alto rendimiento -->
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
-    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/jszip@3.7.1/dist/jszip.min.js"></script>
     <script src="https://unpkg.com/@mapbox/togeojson"></script>
     <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
 
     <style>
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; background: #000; color: white; overflow: hidden; }
-        #panel-left { width: 320px; background: rgba(24, 24, 24, 0.9); padding: 15px; box-sizing: border-box; overflow-y: auto; border-right: 1px solid #333; z-index: 10; backdrop-filter: blur(10px); }
-        #map { flex: 1; height: 100%; } 
-        #panel-right { width: 300px; background: rgba(24, 24, 24, 0.9); padding: 20px; box-sizing: border-box; overflow-y: auto; border-left: 1px solid #333; font-size: 0.85rem; z-index: 10; backdrop-filter: blur(10px); }
-        h2 { color: #00d2ff; font-size: 1rem; border-bottom: 1px solid #333; padding-bottom: 8px; margin-top: 0; text-transform: uppercase; letter-spacing: 1px; }
-        .upload-box { background: #222; padding: 12px; border-radius: 6px; border: 1px dashed #00d2ff; margin-bottom: 15px; }
-        #reporte-analisis { display:none; margin-top: 15px; padding: 12px; background: #1a2a33; border-radius: 6px; border-left: 4px solid #00d2ff; }
-        .legend { background: #222; padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 0.75rem; border: 1px solid #444; }
-        .legend-item { display: flex; align-items: center; margin-bottom: 5px; }
-        .color-box { width: 12px; height: 12px; margin-right: 8px; border-radius: 2px; }
-        #loading { position: fixed; top: 15px; left: 50%; transform: translateX(-50%); background: #000; color: #00d2ff; padding: 10px 25px; border-radius: 30px; z-index: 2000; border: 2px solid #00d2ff; font-weight: bold; box-shadow: 0 0 15px rgba(0,210,255,0.5); }
-        .control-hint { font-size: 0.7rem; color: #00d2ff; text-align: center; margin-top: 10px; background: rgba(0,210,255,0.1); padding: 5px; border-radius: 4px; border: 1px solid rgba(0,210,255,0.3); }
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; background: #000; overflow: hidden; }
+        #panel-left { width: 320px; background: rgba(20, 20, 20, 0.9); padding: 15px; border-right: 1px solid #333; z-index: 10; color: white; overflow-y: auto; }
+        #map { flex: 1; height: 100%; }
+        h2 { color: #00d2ff; font-size: 1rem; border-bottom: 1px solid #333; padding-bottom: 8px; }
+        .upload-box { background: #222; padding: 10px; border: 1px dashed #00d2ff; border-radius: 6px; margin-bottom: 15px; }
+        #loading { position: fixed; top: 15px; left: 50%; transform: translateX(-50%); background: #000; color: #00d2ff; padding: 10px 20px; border-radius: 30px; z-index: 2000; border: 1px solid #00d2ff; }
+        .hint { font-size: 0.7rem; color: #00d2ff; text-align: center; margin-top: 10px; border: 1px solid #00d2ff; padding: 5px; border-radius: 4px; }
     </style>
 </head>
 <body>
 
-    <div id="loading">Sincronizando Relieve 3D (Andes)...</div>
+    <div id="loading">Cargando Relieve 3D de los Andes...</div>
 
     <div id="panel-left">
-        <h2>Inteligencia 3D</h2>
+        <h2>Geoportal 3D</h2>
         <div class="upload-box">
-            <label style="font-size: 0.7rem; color: #00d2ff; display: block; margin-bottom: 8px; font-weight: bold;">ANALIZAR ÁREA (KMZ / KML)</label>
-            <input type="file" id="upload-file" accept=".kml,.kmz" style="font-size: 0.7rem; width: 100%; color: #aaa;">
+            <label style="font-size: 0.7rem; color: #00d2ff; display: block; margin-bottom: 5px;">CARGAR KMZ / KML</label>
+            <input type="file" id="upload-file" accept=".kml,.kmz" style="font-size: 0.7rem; width: 100%; color: #888;">
         </div>
-        
-        <div id="reporte-analisis">
-            <strong style="color: #00d2ff;">Reporte Territorial:</strong>
-            <div id="resultado-conteo" style="color: #eee; font-size: 0.75rem; margin-top:5px;"></div>
+        <div id="reporte-analisis" style="display:none; font-size: 0.8rem; background: #1a2a33; padding: 10px; border-radius: 6px;">
+            <strong>Resultado:</strong> <div id="resultado-conteo"></div>
         </div>
-
-        <div class="legend">
-            <strong>Fragilidad Socio-Minera</strong>
-            <div class="legend-item"><div class="color-box" style="background: #7a0177;"></div> Crítico (> 70%)</div>
-            <div class="legend-item"><div class="color-box" style="background: #d73027;"></div> Alto (40% - 70%)</div>
-            <div class="legend-item"><div class="color-box" style="background: #fee08b;"></div> Medio (10% - 40%)</div>
-            <div class="legend-item"><div class="color-box" style="background: #1a9850;"></div> Bajo (< 10%)</div>
-        </div>
-
         <div style="height: 180px; margin-top:20px;"><canvas id="chartBar"></canvas></div>
-        
-        <div class="control-hint">
-            <b>NAVEGACIÓN 3D:</b><br>
-            Clic derecho + Arrastrar: Inclinar / Girar<br>
-            Rueda: Zoom / Acercar a valles
+        <div class="hint">
+            <b>INTERACCIÓN 3D:</b><br>
+            Mantén <b>Clic Derecho</b> y arrastra hacia arriba para ver las montañas.
         </div>
     </div>
 
     <div id="map"></div>
 
-    <div id="panel-right">
-        <h2>Metodología de Relieve</h2>
-        <div style="color:#bbb; font-size: 0.8rem; text-align: justify;">
-            <p><b>Motor 3D:</b> MapLibre con soporte de malla de terreno (Terrain-RGB).</p>
-            <p><b>Exageración Vertical:</b> 1.8x. Esto permite que los cañones y cordilleras sean identificables visualmente.</p>
-            <p><b>Análisis:</b> Al inclinar la cámara, se puede observar cómo los centros poblados frágiles se ubican en las faldas de las zonas mineras.</p>
-        </div>
-        <div style="margin-top: 40px; font-size: 0.7rem; color: #666; text-align: center; border-top: 1px solid #333; padding-top: 15px;">
-            Autor: Daniel G. Quispe Jiménez
-        </div>
-    </div>
-
     <script>
-        // CONFIGURACIÓN CLAVE PARA EL 3D REAL
+        // CONFIGURACIÓN TÉCNICA DEL TERRENO 3D
         const map = new maplibregl.Map({
             container: 'map',
             style: {
@@ -88,47 +56,36 @@
                         tiles: ['https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'],
                         tileSize: 256
                     },
-                    // ESTA ES LA FUENTE QUE GENERA LAS MONTAÑAS
-                    'terrain-rgb': {
+                    // FUENTE DE ELEVACIÓN (TERRAIN-RGB)
+                    'terrain-data': {
                         type: 'raster-dem',
-                        tiles: ['https://tiles.stadiamaps.com/data/terrain-rgb/{z}/{x}/{y}.png'],
+                        // Usamos la fuente de relieve de MapTiler (Global)
+                        tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrararium/{z}/{x}/{y}.png'],
                         tileSize: 256,
-                        encoding: 'mapbox' // Importante para que reconozca el relieve
+                        encoding: 'terrarium' // Formato específico para esta fuente
                     }
                 },
-                layers: [{
-                    id: 'satellite',
-                    type: 'raster',
-                    source: 'google-sat'
-                }],
-                // ACTIVAR EL TERRENO EN EL ESTILO
+                layers: [{ id: 'satelite', type: 'raster', source: 'google-sat' }],
+                // ACTIVACIÓN DE LA MALLA 3D
                 terrain: {
-                    source: 'terrain-rgb',
-                    exaggeration: 1.8 // Levanta las montañas 1.8 veces su tamaño real
+                    source: 'terrain-data',
+                    exaggeration: 2.5 // Esto hará que las montañas se vean MUY altas
                 }
             },
-            center: [-76.4, -10.5], // Centrado en Pasco/Andes Centrales (donde se nota mucho el 3D)
-            zoom: 10,
-            pitch: 70, // Inclinación fuerte para ver el horizonte montañoso
+            center: [-76.48, -10.68], // Ubicación: Cerro de Pasco (Andes)
+            zoom: 11,
+            pitch: 75, // Inclinación agresiva para ver el relieve
             bearing: -20,
             maxPitch: 85
         });
 
-        // Controles de navegación MapLibre
-        map.addControl(new maplibregl.NavigationControl({visualizePitch: true}));
+        map.addControl(new maplibregl.NavigationControl());
 
         let dataEnahoFeatures = [];
 
         map.on('load', () => {
-            // Agregar efecto de cielo/atmósfera
-            map.setFog({
-                "range": [0.8, 8],
-                "color": "#1a1a1a",
-                "high-color": "#000000",
-                "space-color": "#000000",
-                "horizon-blend": 0.1
-            });
-
+            // Añadir atmósfera para profundidad
+            map.setFog({ "range": [0.5, 10], "color": "#111", "high-color": "#000" });
             cargarDatos();
         });
 
@@ -139,38 +96,25 @@
                 dataEnahoFeatures = data.features;
 
                 map.addSource('puntos', { type: 'geojson', data: data });
-
                 map.addLayer({
                     id: 'puntos-layer',
                     type: 'circle',
                     source: 'puntos',
                     paint: {
-                        'circle-radius': 7,
+                        'circle-radius': 6,
                         'circle-color': [
                             'step', ['get', 'indice_dep'],
                             '#1a9850', 10, '#fee08b', 40, '#d73027', 70, '#7a0177'
                         ],
-                        'circle-stroke-width': ['match', ['get', 'confianza_'], 'Alta', 2, 0],
+                        'circle-stroke-width': 1,
                         'circle-stroke-color': '#000',
-                        // Asegura que los puntos se "peguen" a la superficie de la montaña
-                        'circle-pitch-alignment': 'map' 
+                        'circle-pitch-alignment': 'map' // Hace que los puntos sigan la inclinación del cerro
                     }
-                });
-
-                map.on('click', 'puntos-layer', (e) => {
-                    const props = e.features[0].properties;
-                    new maplibregl.Popup({closeButton: false, className: 'custom-popup'})
-                        .setLngLat(e.lngLat)
-                        .setHTML(`<div style="color:#000; padding:5px;"><b>${props.nomccpp}</b><br>Fragilidad: ${props.indice_dep.toFixed(1)}%</div>`)
-                        .addTo(map);
                 });
 
                 actualizarGrafico(data.features);
                 document.getElementById('loading').style.display = 'none';
-            } catch (e) {
-                console.error(e);
-                document.getElementById('loading').innerText = "Error de Conexión";
-            }
+            } catch (e) { console.error(e); }
         }
 
         function actualizarGrafico(features) {
@@ -185,15 +129,11 @@
                     labels: Object.keys(dist),
                     datasets: [{ data: Object.values(dist), backgroundColor: ['#7a0177', '#d73027', '#fee08b', '#1a9850'] }]
                 },
-                options: { 
-                    responsive: true, maintainAspectRatio: false, 
-                    plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true, grid: { color: '#333' } }, x: { ticks: { color: '#ccc' } } }
-                }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
             });
         }
 
-        // LÓGICA KMZ / KML PARA 3D
+        // --- Lógica KMZ ---
         document.getElementById('upload-file').addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
@@ -206,37 +146,21 @@
                     const zip = await JSZip.loadAsync(event.target.result);
                     const kmlFile = Object.keys(zip.files).find(f => f.endsWith('.kml'));
                     kml = await zip.file(kmlFile).async("string");
-                } else {
-                    kml = event.target.result;
-                }
-                
+                } else { kml = event.target.result; }
+
                 const geojson = toGeoJSON.kml(new DOMParser().parseFromString(kml, "text/xml"));
                 
-                if (map.getLayer('user-fill')) map.removeLayer('user-fill');
-                if (map.getSource('user-area')) map.removeSource('user-area');
-
-                map.addSource('user-area', { type: 'geojson', data: geojson });
-                map.addLayer({
-                    id: 'user-fill',
-                    type: 'fill',
-                    source: 'user-area',
-                    paint: { 'fill-color': '#00d2ff', 'fill-opacity': 0.4 }
-                });
+                if (map.getSource('user-area')) { map.getSource('user-area').setData(geojson); } 
+                else {
+                    map.addSource('user-area', { type: 'geojson', data: geojson });
+                    map.addLayer({
+                        id: 'user-fill', type: 'fill', source: 'user-area',
+                        paint: { 'fill-color': '#00d2ff', 'fill-opacity': 0.4 }
+                    });
+                }
 
                 const bbox = turf.bbox(geojson);
-                map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding: 80, pitch: 60 });
-
-                let count = 0, sum = 0;
-                dataEnahoFeatures.forEach(f => {
-                    const pt = turf.point(f.geometry.coordinates);
-                    if (geojson.features.some(poly => poly.geometry.type.includes('Polygon') && turf.booleanPointInPolygon(pt, poly))) {
-                        count++; sum += f.properties.indice_dep;
-                    }
-                });
-
-                document.getElementById('reporte-analisis').style.display = 'block';
-                document.getElementById('resultado-conteo').innerHTML = count > 0 ? 
-                    `Localidades: ${count}<br>Promedio Fragilidad: ${(sum/count).toFixed(1)}%` : "Área sin localidades registradas.";
+                map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding: 50, pitch: 60 });
             };
             if (esKMZ) reader.readAsArrayBuffer(file); else reader.readAsText(file);
         });
